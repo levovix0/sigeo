@@ -1,0 +1,15 @@
+[package]
+name = "sigeo"
+version = "0.1.0"
+license = "MIT"
+kind = "Library"
+backend = "C"
+binaries = []
+
+[toolchain]
+version = "2.2.4"
+
+[dependencies]
+vmath = ">= 2.0.0"  # for compatibility with vectors used by many nim projects
+print = ">= 0.1.0"  # for debugging
+
