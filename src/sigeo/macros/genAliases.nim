@@ -57,5 +57,5 @@ macro aliases*(names: untyped, fdef: untyped): untyped =
       fdef[5],
       nnkCall.newTree(@[fdef.name] & fdef[3].formalArgs_names)
     )
-    result[^1][0].copyLineInfo(fdef[0])
+    # result[^1][0].copyLineInfo(fdef[0])
 

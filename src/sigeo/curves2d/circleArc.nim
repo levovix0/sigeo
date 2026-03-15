@@ -71,7 +71,7 @@ proc length*(circle: CircleArc): Float =
   circle.angularLength * circle.radius
 
 
-proc paramLength*(circle: CircleArc, t: FloatParam): Float =
+proc paramLength*(circle: CircleArc, t: FloatParam): Float {.deprecated: "always 1".} =
   1
 
 

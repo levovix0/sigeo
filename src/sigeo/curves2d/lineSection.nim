@@ -38,7 +38,7 @@ proc length*(line: LineSection): Float =
   (line.endPoint - line.startPoint).length
 
 
-proc paramLength*(line: LineSection): Float =
+proc paramLength*(line: LineSection): Float {.deprecated: "always 1".} =
   1
 
 

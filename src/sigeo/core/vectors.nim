@@ -133,12 +133,6 @@ template sureGreater*(a, b: Float, unitsInLastPlace: Natural = 4): bool {.aliase
   sureLess(b, a, unitsInLastPlace)
 
 
-template `~<`*(a, b: Float): bool = almostEqualOrLess(a, b)
-template `~>`*(a, b: Float): bool = almostEqualOrGreater(a, b)
-template `~!<`*(a, b: Float): bool = sureLess(a, b)
-template `~!>`*(a, b: Float): bool = sureGreater(a, b)
-
-
 
 proc signedAngleToPlusX*(a: Vec2): Float {.aliases: [angleToPlusX, angleToX, planarAngle, theta].} =
   ## returns the (signed) angle between a and +X axis in radians
@@ -226,39 +220,9 @@ proc param*(t: Float, min: Float = 0, max: Float = 1): FloatParam =
   t.clamp(min, max).FloatParam
 
 
-proc `*`*(a: FloatParam, b: Float): Float {.borrow.}
-proc `*`*(a: Float, b: FloatParam): Float {.borrow.}
-
-
-proc `$`*(a: FloatParam): string {.borrow.}
-
-
-proc almostEqual*(a, b: FloatParam, unitsInLastSpace: Natural = 4): bool {.borrow.}
-proc almostEqual*(a: Float, b: FloatParam, unitsInLastSpace: Natural = 4): bool {.borrow.}
-proc almostEqual*(a: FloatParam, b: Float, unitsInLastSpace: Natural = 4): bool {.borrow.}
-
-template `~==`*(a, b: FloatParam): bool =
-  a.almostEqual(b)
-
-template `~==`*(a: Float, b: FloatParam): bool =
-  a.almostEqual(b)
-
-template `~==`*(a: FloatParam, b: Float): bool =
-  a.almostEqual(b)
-
-
-proc `*`*(a: FloatParam, b: Vec2): Vec2 =
-  vec2(a * b.x, a * b.y)
-
-proc `*`*(a: Vec2, b: FloatParam): Vec2 =
-  vec2(a.x * b, a.y * b)
-
-
-proc `*`*(a: FloatParam, b: Vec3): Vec3 =
-  vec3(a * b.x, a * b.y, a * b.z)
-
-proc `*`*(a: Vec3, b: FloatParam): Vec3 =
-  vec3(a.x * b, a.y * b, a.z * b)
+converter toParam*(v: Float): FloatParam = v.param
+converter toParam*(v: SomeNumber): FloatParam = v.Float.param
+converter toUnspecified*(v: FloatParam): Float = v.Float
 
 
 
@@ -274,35 +238,9 @@ proc normal*(v: Vec3): NormalVec3 =
   normalize(v).NormalVec3
 
 
-converter toNormal*(v: Vec3): NormalVec3 =
-  v.normal
+converter toNormal*(v: Vec3): NormalVec3 = v.normal
+converter toUnspecified*(v: NormalVec3): Vec3 = v.Vec3
 
-converter toAnyLength*(v: NormalVec3): Vec3 =
-  v.Vec3
-
-
-proc `*`*(a: NormalVec3, b: Float): Vec3 {.borrow.}
-proc `*`*(b: Float, a: NormalVec3): Vec3 {.borrow.}
-proc `-`*(a: NormalVec3): NormalVec3 {.borrow.}
-
-
-template x*(v: NormalVec3): Float = v.Vec3.x
-template y*(v: NormalVec3): Float = v.Vec3.y
-template z*(v: NormalVec3): Float = v.Vec3.z
-
-
-template `x=`*(v: var NormalVec3, x: Float) = v.Vec3.x = x
-template `y=`*(v: var NormalVec3, y: Float) = v.Vec3.y = y
-template `z=`*(v: var NormalVec3, z: Float) = v.Vec3.z = z
-
-
-proc almostEqual*(a, b: NormalVec3, unitsInLastSpace: Natural = 4): bool {.borrow, aliases: [`~==`].}
-
-proc almostEqual*(a: Vec3, b: NormalVec3, unitsInLastSpace: Natural = 4): bool {.inline, aliases: [`~==`].} =
-  a.almostEqual(b.Vec3, unitsInLastSpace)
-
-proc almostEqual*(a: NormalVec3, b: Vec3, unitsInLastSpace: Natural = 4): bool {.inline, aliases: [`~==`].} =
-  a.Vec3.almostEqual(b, unitsInLastSpace)
 
 
 proc lenOnAxis*(v: Vec3, axis: NormalVec3): Float {.inline, aliases: [lengthOnAxis].} =
