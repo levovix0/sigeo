@@ -21,8 +21,17 @@ type
     axisX*, axisY*, axisZ*: NormalVec3
 
 
-proc origin*(plane: Placement): Point3 {.aliases: [center, start].} =
+proc origin*(plane: Placement): Point3 {.aliases: [center].} =
   plane.pos
+
+proc xAxis*(plane: Placement): NormalVec3 =
+  plane.axisX
+
+proc yAxis*(plane: Placement): NormalVec3 =
+  plane.axisY
+
+proc zAxis*(plane: Placement): NormalVec3 =
+  plane.axisZ
 
 
 proc transformBy*(x: Vec3, cs: Placement): Vec3 =

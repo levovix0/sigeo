@@ -116,6 +116,7 @@ proc triangulate*(grid: sink Grid3): Grid3 =
 
   if result.kind == Quads:
     var indices = move result.indices
+    result.indices = newSeqOfCap[int32]((indices.high div 4) * 6)
     for i in countup(0, indices.high, 4):
       result.indices.add [indices[i], indices[i+1], indices[i+2], indices[i], indices[i+2], indices[i+3]]
     result.kind = Triangles

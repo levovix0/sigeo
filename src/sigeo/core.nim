@@ -1,3 +1,3 @@
-import ./core/[vectors, points, planes]
-export vectors, points, planes
+import ./core/[vectors, points, placement]
+export vectors, points, placement
 

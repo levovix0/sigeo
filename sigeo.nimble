@@ -1,6 +1,6 @@
 version       = "0.1.0"
 author        = "levovix"
-description   = "Geometrical core"
+description   = "Computational geometry"
 license       = "MIT"
 srcDir        = "src"
 
