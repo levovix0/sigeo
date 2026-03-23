@@ -1,0 +1,2 @@
+--define:sigeo_use_float32
+--define:sigeo_return_axisX_when_zeroLen_normal_vector
