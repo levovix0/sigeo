@@ -41,6 +41,10 @@ let grid = extrusionShellGrid(
 )
 ```
 
+![shaft](examples/shaft.png)
+[shaft, shown on window](examples/extrusion.nim)
+
+
 ## Compile flags
 
 - Float size:  

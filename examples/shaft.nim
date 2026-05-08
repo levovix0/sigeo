@@ -126,7 +126,7 @@ win.eventsHandler.onRender = proc(e: RenderEvent) =
   ctx.resize(aafb, e.window.size)
 
   ctx.drawInside aafb:
-    glClearColor(0.18, 0.18, 0.2, 1)
+    glClearColor(0.2, 0.2, 0.2, 1)
     glClearDepthf(1.0)
     glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
