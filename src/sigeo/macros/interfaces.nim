@@ -348,7 +348,15 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed]) =
       newEmptyNode(), newEmptyNode(),
       nnkFormalParams.newTree(
         ident(nameStr),
-        newIdentDefs(ident"this", impl.copy)
+        newIdentDefs(
+          nnkPragmaExpr.newTree(
+            ident"this",
+            nnkPragma.newTree(
+              ident("byref")
+            )
+          ),
+          impl.copy,
+        )
       ),
       nnkPragma.newTree(ident"inline"),
       newEmptyNode(),

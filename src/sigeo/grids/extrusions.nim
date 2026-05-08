@@ -2,6 +2,7 @@
 
 import std/[sequtils]
 import ../core/[vectors, points, placement]
+import ../curves2d/icurve2d
 
 type
   Sag* = Float
@@ -37,6 +38,9 @@ proc placementAtParam*(curve: Curve3d, t: FloatParam): Placement =
 proc closed*(curve: Curve3d): bool =
   curve.pointAtParam(0) ~== curve.pointAtParam(1)
 
+proc closed*(curve: Curve2d): bool =
+  curve.pointAtParam(0) ~== curve.pointAtParam(1)
+
 
 
 iterator discretePoints*(curve: Curve3d, sag: Sag = defaultSag, startPoint = true, endPoint = true): Point3 =
@@ -49,13 +53,21 @@ iterator discretePoints*(curve: Curve3d, sag: Sag = defaultSag, startPoint = tru
 
 
 iterator discretePlacements*(curve: Curve3d, sag: Sag = defaultSag, startPoint = true, endPoint = true): Placement =
-  ## todo: implement sag-based curve discretisation
   var t = 0.Float
   if not startPoint: t += curve.speedAtParam(0.FloatParam) * sag
   while t ~< 1.Float:
     yield curve.placementAtParam(t.FloatParam)
     t += curve.speedAtParam(t.FloatParam) * sag
   if endPoint: yield curve.placementAtParam(1.FloatParam)
+
+iterator discretePoints*(curve: Curve2d, sag: Sag = defaultSag, startPoint = true, endPoint = true): Point2 =
+  let paramStep = sag / curve.length
+  var t = 0.Float
+  if not startPoint: t += paramStep
+  while t ~< 1.Float:
+    yield curve.pointAtParam(t.FloatParam)
+    t += paramStep
+  if endPoint: yield curve.pointAtParam(1.FloatParam)
 
 
 
@@ -68,14 +80,15 @@ proc extrusionShellGrid*(
   result.kind = Quads
 
   let plane = spine.placementAtParam(0)
-  let bastMat = plane.toMatrix.inverse
-  result.points.add contour
+  let baseMat = plane.toMatrix
+  for cpt in contour:
+    result.points.add((baseMat * cpt.Vec3).Point3)
 
   var idxStart = 0'i32
   let count = contour.len.int32
   
   for place in spine.discretePlacements(sag, startPoint = false, endPoint = spine.closed.not):
-    let mat = place.toMatrix * bastMat
+    let mat = place.toMatrix
     
     for cpt in contour:
       result.points.add((mat * cpt.Vec3).Point3)
@@ -110,6 +123,20 @@ proc extrusionShellGrid*(
   extrusionShellGrid(contour.discretePoints(sag, endPoint = contour.closed.not).toSeq, contour.closed, spine, sag)
 
 
+proc extrusionShellGrid*(
+  contour: Curve2d,
+  spine: Curve3d,
+  sag: Sag = defaultSag,
+): Grid3 =
+  let contourPlane = spine.placementAtParam(0)
+  extrusionShellGrid(
+    contour.discretePoints(sag, endPoint = contour.closed.not).toSeq.mapIt(it.toWorld(contourPlane)),
+    contour.closed,
+    spine,
+    sag
+  )
+
+
 
 proc triangulate*(grid: sink Grid3): Grid3 =
   result = move grid
@@ -120,4 +147,3 @@ proc triangulate*(grid: sink Grid3): Grid3 =
     for i in countup(0, indices.high, 4):
       result.indices.add [indices[i], indices[i+1], indices[i+2], indices[i], indices[i+2], indices[i+3]]
     result.kind = Triangles
-

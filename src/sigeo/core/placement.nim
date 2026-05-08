@@ -53,9 +53,9 @@ proc transformBy*(x: Point2, cs: Placement): Point3 =
 
 proc toMatrix*(cs: Placement): Mat4 =
   mat4(
-    cs.axisX.x, cs.axisY.x, cs.axisZ.x, 0,
-    cs.axisX.y, cs.axisY.y, cs.axisZ.y, 0,
-    cs.axisX.z, cs.axisY.z, cs.axisZ.z, 0,
+    cs.axisX.x, cs.axisX.y, cs.axisX.z, 0,
+    cs.axisY.x, cs.axisY.y, cs.axisY.z, 0,
+    cs.axisZ.x, cs.axisZ.y, cs.axisZ.z, 0,
     cs.pos.x, cs.pos.y, cs.pos.z, 1
   )
 

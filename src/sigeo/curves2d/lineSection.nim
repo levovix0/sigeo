@@ -84,6 +84,3 @@ proc almostEqual*(lineA, lineB: LineSection): bool {.aliases: [`~==`].} =
   lineA.startPoint.almostEqual(lineB.startPoint) and lineA.endPoint.almostEqual(lineB.endPoint) or
   lineA.startPoint.almostEqual(lineB.endPoint) and lineA.endPoint.almostEqual(lineB.startPoint)
 
-template `~==`*(lineA, lineB: LineSection): bool =
-  lineA.almostEqual(lineB)
-

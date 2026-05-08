@@ -1,3 +1,3 @@
-import ./curves2d/[lineSection, circleArc, intersections]
-export lineSection, circleArc, intersections
+import ./curves2d/[lineSection, circleArc, intersections, icurve2d]
+export lineSection, circleArc, intersections, icurve2d
 

@@ -12,44 +12,32 @@ Computational geometry
 [extrusion, shown on window](examples/extrusion.nim)
 
 ```nim
+proc spiralF(t: float): Point3 = point3(cos(t / 50) * 2, t / 100, sin(t / 50) * 2)
+
 let spiral = Curve3d(
   speedAtParam: proc(t: FloatParam): Float =
-    1 / 10
+    1 / 20
   ,
   pointAtParam: proc(t: FloatParam): Point3 =
-    let t = t * 1000
-    point3(cos(t / 50) * 2, t / 100, sin(t / 50) * 2)
+    spiralF(t * 1000)
   ,
   derAtParam: proc(t: FloatParam): NormalVec3 =
-    let t = t * 1000
-    vec3(1 / 50 * -sin(t / 50) * 2, 1 / 50 * cos(t / 50) * 2, -1 / 100)
+    let u = t * 20
+    vec3(-sin(u) * 40, 10, cos(u) * 40).normal
   ,
   xAxisAtParam: proc(t: FloatParam): NormalVec3 =
-    let t = t * 1000
-    plane(vec3(1 / 50 * -sin(t / 50) * 2, 1 / 50 * cos(t / 50) * 2, -1 / 100)).axisX
+    let u = t * 20
+    vec3(cos(u), 0, sin(u)).normal
   ,
 )
 
-let circle = Curve3d(
-  speedAtParam: proc(t: FloatParam): Float =
-    1
-  ,
-  pointAtParam: proc(t: FloatParam): Point3 =
-    point3(cos(t * Pi*2) / 5 + 2, sin(t * Pi*2) / 5, 0)
-  ,
-  derAtParam: proc(t: FloatParam): NormalVec3 =
-    vec3(-sin(t * Pi*2) / 5, cos(t * Pi*2) / 5, 0)
-  ,
-  xAxisAtParam: proc(t: FloatParam): NormalVec3 =
-    vec3(-sin(t * Pi*2) / 5, cos(t * Pi*2) / 5, 0).rotate(vec3(0, 0, 1), Pi/2)
-  ,
-)
+let circle = circleArc(point2(), 1/2)
 
 
 let grid = extrusionShellGrid(
   contour = circle,
   spine = spiral,
-  # sag = 0.01,
+  # sag = 0.1,
 )
 ```
 
