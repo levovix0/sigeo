@@ -44,8 +44,12 @@ template toVec*(p: Point2): Vec2 = p.Vec2
 template toVec*(p: Point3): Vec3 = p.Vec3
 
 
-proc `$`*(p: Point2): string {.borrow.}
-proc `$`*(p: Point3): string {.borrow.}
+proc `$`*(v: Point2): string =
+  "point2(" & $v.x & ", " & $v.y & ")"
+
+proc `$`*(v: Point3): string =
+  "point3(" & $v.x & ", " & $v.y & ", " & $v.z & ")"
+
 
 proc `==`*(a, b: Point2): bool {.borrow.}
 proc `==`*(a, b: Point3): bool {.borrow.}
@@ -151,3 +155,4 @@ proc almostEqual*(a, b: Point3, tolerance: Float): bool {.borrow.}
 
 
 template `~!=`*[T](a, b: T): bool = not(a ~== b)
+
