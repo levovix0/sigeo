@@ -1,5 +1,18 @@
 import std/[macros, hashes]
 
+
+## Interfaces are unowned fat pointers to arbitrary object. Basicaly an (obj: pointer, vtable: ptr VtableType).
+## Inheritance is not supported, there is one vtable for any type that implements an interface.
+## A type may implement many interfaces at once. There is no given wat to cast diffirent interfaces into each other.
+## If you need to retrieve a type from an interface, you can check the .vtable.typenameHash.
+## To cast `x` interface back to a known type, first check the x.vtable.typenameHash == hash"MyKnownType", then cast[ptr MyKnownType](x.obj).
+##
+## If you created an interface, make sure the lifetime of the interface is less then the lifetime of an actual object.
+## You can use OwnedXXX (where XXX is the name of the interface) to store arbitrary objects of that interface type.
+## OwnedXXX behaves like regular Nim object with copying and move semantics, but it is allocated on the heap.
+## Use toOwnedXXX to create an OwnedXXX by moving (or copying) a known type object into it
+
+
 type
   MethodSig = object
     name: string
@@ -354,7 +367,7 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed]) =
       newEmptyNode(), newEmptyNode(),
       nnkFormalParams.newTree(
         ident("Owned" & nameStr),
-        newIdentDefs(ident"this", impl.copy)
+        newIdentDefs(ident"this", newCall(ident("sink"), impl.copy))
       ),
       nnkPragma.newTree(ident"inline"),
       newEmptyNode(),
