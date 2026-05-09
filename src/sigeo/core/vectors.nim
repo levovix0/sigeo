@@ -32,6 +32,9 @@ type
   FloatParam* = distinct Float
     ## A float guaranteed to be from 0 to 1.
 
+  NormalVec2* = distinct Vec2
+    ## A vector guaranteed to be 1 unit long.
+
   NormalVec3* = distinct Vec3
     ## A vector guaranteed to be 1 unit long.
 
@@ -226,6 +229,18 @@ converter toUnspecified*(v: FloatParam): Float = v.Float
 
 
 
+proc normal*(v: Vec2): NormalVec2 =
+  when not defined(sigeo_assume_no_zeroLen_normal_vector):
+    if v ~== vec2(0, 0):
+      when defined(sigeo_return_axisX_when_zeroLen_normal_vector):
+        return vec2(1, 0).NormalVec2
+
+      elif true or defined(sigeo_raise_valueError_when_zeroLen_normal_vector):
+        raise ValueError.newException("Zero length normal vector")
+
+  normalize(v).NormalVec2
+
+
 proc normal*(v: Vec3): NormalVec3 =
   when not defined(sigeo_assume_no_zeroLen_normal_vector):
     if v ~== vec3(0, 0, 0):
@@ -238,8 +253,23 @@ proc normal*(v: Vec3): NormalVec3 =
   normalize(v).NormalVec3
 
 
+converter toNormal*(v: Vec2): NormalVec2 = v.normal
+converter toUnspecified*(v: NormalVec2): Vec2 = v.Vec2
+
+
 converter toNormal*(v: Vec3): NormalVec3 = v.normal
 converter toUnspecified*(v: NormalVec3): Vec3 = v.Vec3
+
+
+
+proc lenOnAxis*(v: Vec2, axis: NormalVec2): Float {.inline, aliases: [lengthOnAxis].} =
+  v.dot(axis.Vec2)
+
+proc projectToAxis*(v: Vec2, axis: NormalVec2): Vec2 {.inline.} =
+  axis.Vec2 * v.lenOnAxis(axis)
+
+proc ortoProject*(v: Vec2, normal: NormalVec2): Vec2 {.inline.} =
+  v - v.projectToAxis(normal)
 
 
 

@@ -25,6 +25,11 @@ proc lineSection*(startPoint, endPoint: Point2): LineSection =
   )
   
 
+proc a*(line: LineSection): Point2 = line.startPoint
+proc b*(line: LineSection): Point2 = line.endPoint
+
+
+
 proc toVec*(line: LineSection): Vec2 =
   ## retruns vector from start point to end point
   line.endPoint - line.startPoint
@@ -54,6 +59,9 @@ proc paramAtPoint*(line: LineSection, point: Point2): FloatParam =
 
 proc direction*(line: LineSection): Vec2 =
   line.toVec.normalize
+
+proc center*(line: LineSection): Point2 =
+  line.startPoint + (line.endPoint - line.startPoint) / 2
 
 
 proc fastHasPoint*(line: LineSection, point: Point2): bool =
