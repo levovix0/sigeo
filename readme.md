@@ -42,7 +42,7 @@ let grid = extrusionShellGrid(
 ```
 
 ![shaft](examples/shaft.png)
-[shaft, shown on window](examples/extrusion.nim)
+[shaft, shown on window](examples/shaft.nim)
 
 
 ## Compile flags
