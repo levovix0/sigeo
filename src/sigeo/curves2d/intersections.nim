@@ -187,8 +187,10 @@ proc intersectionSegmentsParams*(
     ## "yAxis" for curveA
 
   let bay = bv.dot(avy)
+  if not(bay ~== 0): return  # not parallel
 
-  if not(bay ~== 0): return
+  let bspld = (curveA.startPoint - curveB.startPoint).dot(avy)
+  if not(bspld ~== 0): return  # parallel but not collinear
 
   result[0] = (
     curveA: (
@@ -206,6 +208,12 @@ proc intersectionSegmentsParams*(
 
   inc segmentsCount
 
+
+
+proc hasIntersectedSegments*(a, b: LineSection): bool =
+  var segmentsCount = 0
+  discard intersectionSegmentsParams(a, b, segmentsCount)
+  segmentsCount > 0
 
 
 wrapIntersectionToReturnSeq(LineSection, LineSection)
