@@ -211,7 +211,7 @@ proc intersectionSegmentsParams*(
 
 
 proc hasIntersectedSegments*(a, b: LineSection, eps = 1e-9): bool =
-  var segmentsCount = 0 
+  var segmentsCount = 0
   discard intersectionSegmentsParams(lineSection(point2(a.startPoint.x+eps, a.startPoint.y+eps), point2(a.endPoint.x+eps, a.endPoint.y+eps)), lineSection(point2(b.startPoint.x-eps, b.startPoint.y-eps), point2(b.endPoint.x-eps, b.endPoint.y-eps)), segmentsCount)
   segmentsCount > 0
 
