@@ -220,8 +220,59 @@ wrapIntersectionToReturnSeq(LineSection, LineSection)
 
 
 
+proc intersectionPointsParams*(
+  curveA: LineSection,
+  curveB: CircleArc,
+  pointsCount: var int,
+): array[maxIntersectionPoints(curveA, curveB), FloatParam2] =
+  let d = curveA.endPoint - curveA.startPoint
+  let f = curveA.startPoint - curveB.center
+
+  let qa = d.dot(d)
+  let qb = 2 * f.dot(d)
+  let qc = f.dot(f) - curveB.radius * curveB.radius
+
+  let discriminant = qb * qb - 4 * qa * qc
+  if discriminant.sureLess(0): return
+
+  let sqrtDisc = sqrt(max(0.Float, discriminant))
+  let angLen = curveB.angularLength
+
+  template checkPoint(lineT: Float) {.dirty.} =
+    block checkPointBlock:
+      if lineT.sureLess(0) or lineT.sureGreater(1): break checkPointBlock
+
+      let pv = curveA.startPoint + d * lineT
+      let angle = arctan2((pv - curveB.center).y, (pv - curveB.center).x)
+
+      var arcParam: Float
+      if angLen > 0:
+        let dist = ((angle - curveB.startAngle) mod (2 * PI) + 2 * PI) mod (2 * PI)
+        if not curveB.fullCircle and dist.sureGreater(angLen): break checkPointBlock
+        arcParam = dist / angLen
+      else:
+        let dist = -(((curveB.startAngle - angle) mod (2 * PI) + 2 * PI) mod (2 * PI))
+        if not curveB.fullCircle and dist.sureLess(angLen): break checkPointBlock
+        arcParam = dist / angLen
+
+      result[pointsCount] = (curveA: lineT.FloatParam, curveB: arcParam.FloatParam)
+      inc pointsCount
+
+  if discriminant ~== 0:
+    checkPoint((-qb) / (2 * qa))
+  else:
+    checkPoint((-qb - sqrtDisc) / (2 * qa))
+    checkPoint((-qb + sqrtDisc) / (2 * qa))
+
+
+wrapIntersectionToReturnSeq(LineSection, CircleArc)
+
+
+
 when isMainModule:
   import print
+
+  print "\n\nLineSection <-> LineSection"
 
   block:
     print intersectionPointsParams(
@@ -274,4 +325,23 @@ when isMainModule:
       lineSection(point2(0, 0), point2(2, 2)),
       lineSection(point2(0, 1), point2(1, 0)),
     )
+
+  print "\n\nLineSection <-> CircleArc"
+
+  block:
+    let arc = circleArc(point2(0, 0), 1, 0, PI)
+    let pts = intersectionPointsParams(
+      lineSection(point2(-2, 0.5), point2(2, 0.5)),
+      arc,
+    )
+    print pts
+    print arc.pointAtParam(pts[0].curveB)  # aroud (-sqrt(0.75), 0.5)
+    print arc.pointAtParam(pts[1].curveB)  # aroud ( sqrt(0.75), 0.5)
+
+  block:
+    let arc = circleArc(point2(0, 0), 1, 0, PI / 2)
+    print intersectionPointsParams(
+      lineSection(point2(-2, -0.5), point2(2, -0.5)),
+      arc,
+    )  # should be empty
 
