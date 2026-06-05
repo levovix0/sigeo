@@ -11,6 +11,10 @@ elif true or defined(sigeo_use_float64):
 
 import ../macros/[genAliases]
 
+const sigeo_axisY_up* = defined(sigeo_axisY_up) or not defined(sigeo_axisY_down)
+  ## when true (default), Y axis points up (CCW arcs go in positive angle direction)
+  ## set to false (-d:sigeoYAxisUp=false) for screen/pixel coordinates where Y points down
+
 
 type
   FVec2* = GVec2[float32]
@@ -37,6 +41,10 @@ type
 
   NormalVec3* = distinct Vec3
     ## A vector guaranteed to be 1 unit long.
+
+  AngleDirection* = enum
+    counterclockwise
+    clockwise
 
 
 template genVecConstructors(lower, upper, typ: untyped) =

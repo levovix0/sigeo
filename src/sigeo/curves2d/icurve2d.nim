@@ -1,6 +1,6 @@
 import ../core/[vectors, points]
 import ../macros/[interfaces]
-import ./[lineSection, circleArc]
+import ./[lineSection, circleArc, ellipseArc]
 
 
 makeInterface Curve2d:
@@ -8,7 +8,13 @@ makeInterface Curve2d:
   proc pointAtParam(this; param: FloatParam): Point2
 
 
-Curve2d.implementInterfaceFor(LineSection, CircleArc)
+Curve2d.implementInterfaceFor(LineSection, CircleArc, EllipseArc)
+
+
+proc points*(arc: Curve2d, count: int = 32): seq[Point2] =
+  for i in 0..count:
+    result.add arc.pointAtParam(i / count)
+
 
 
 when isMainModule:

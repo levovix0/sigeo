@@ -2,10 +2,6 @@ import ../core/[vectors, points]
 import ../macros/[genAliases]
 
 type
-  CircleArcDirection* = enum
-    counterclockwise
-    clockwise
-
   CircleArc* = object
     ## a kind of 2d curve
     center*: Point2
@@ -14,7 +10,7 @@ type
       ## signed angle from +x to start/end point in radians
       ## if equal, circle is full
       ## positive is counterclockwise, negative is clockwise
-    direction*: CircleArcDirection
+    direction*: AngleDirection
       ## is arc counterclockwise or clockwise from start to end
 
 
@@ -26,7 +22,7 @@ proc adjustToPrecision*(circle: var CircleArc) =
 proc circleArc*(
   center: Point2, radius: Float,
   startAngle: Float = 0, endAngle: Float = 0,
-  direction: CircleArcDirection = counterclockwise
+  direction: AngleDirection = counterclockwise
 ): CircleArc =
   result = CircleArc(
     center: center,
@@ -60,15 +56,21 @@ proc endPoint*(circle: CircleArc): Point2 =
 
 
 proc angularLength*(circle: CircleArc): Float =
-  ## returns angular length of circle arc in radians, `Pi*2` for full circle
+  ## returns signed angular sweep of the arc in radians, `Pi*2` for full circle
   if circle.fullCircle:
-    2 * Pi
+    case circle.direction
+    of counterclockwise:  2 * Pi
+    of clockwise:        -2 * Pi
   else:
-    circle.endAngle - circle.startAngle
+    let diff = (circle.endAngle - circle.startAngle)
+    if (circle.direction == counterclockwise) == sigeo_axisY_up:
+      if diff <= 0: diff + 2 * Pi else: diff
+    else:
+      if diff >= 0: diff - 2 * Pi else: diff
 
 
 proc length*(circle: CircleArc): Float =
-  circle.angularLength * circle.radius
+  abs(circle.angularLength) * circle.radius
 
 
 proc paramLength*(circle: CircleArc, t: FloatParam): Float {.deprecated: "always 1".} =

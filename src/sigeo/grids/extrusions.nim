@@ -93,22 +93,22 @@ proc extrusionShellGrid*(
     for cpt in contour:
       result.points.add((mat * cpt.Vec3).Point3)
 
-      if contourClosed:
-        for idx in 0'i32 .. count - 1:
-          result.indices.add [
-            idxStart + idx,
-            idxStart + (idx + 1) mod count,
-            idxStart + (idx + 1) mod count + count,
-            idxStart + idx + count,
-          ]
-      else:
-        for idx in 0'i32 .. count - 2:
-          result.indices.add [
-            idxStart + idx,
-            idxStart + idx + 1,
-            idxStart + idx + 1 + count,
-            idxStart + idx + count,
-          ]
+    if contourClosed:
+      for idx in 0'i32 .. count - 1:
+        result.indices.add [
+          idxStart + idx,
+          idxStart + (idx + 1) mod count,
+          idxStart + (idx + 1) mod count + count,
+          idxStart + idx + count,
+        ]
+    else:
+      for idx in 0'i32 .. count - 2:
+        result.indices.add [
+          idxStart + idx,
+          idxStart + idx + 1,
+          idxStart + idx + 1 + count,
+          idxStart + idx + count,
+        ]
     
     idxStart += count
 
