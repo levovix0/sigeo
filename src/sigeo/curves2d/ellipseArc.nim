@@ -4,7 +4,7 @@ type
   EllipseArc* = object
     ## a kind of 2d curve — an arc of an axis-aligned ellipse
     center*: Point2
-    size*: Vec2
+    size*: V2
       ## full bounding box: width = 2*rx, height = 2*ry
     startAngle*, endAngle*: Float
       ## signed angle from +x to start/end point in radians
@@ -14,7 +14,7 @@ type
 
 
 proc ellipseArc*(
-  center: Point2, size: Vec2,
+  center: Point2, size: V2,
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise
 ): EllipseArc =
@@ -99,4 +99,4 @@ proc length*(arc: EllipseArc): Float =
 
 proc pointAtParam*(arc: EllipseArc, t: FloatParam): Point2 =
   let angle = arc.startAngle + Float(t) * arc.angularLength
-  arc.center + vec2(arc.size.x / 2 * cos(angle), arc.size.y / 2 * sin(angle))
+  arc.center + v2(arc.size.x / 2 * cos(angle), arc.size.y / 2 * sin(angle))

@@ -1,8 +1,8 @@
 import ../core/[vectors, points]
 
 
-proc computeVertexNormals*(vertices: openArray[Point3], indices: openArray[int]): seq[Vec3] =
-  result = newSeq[Vec3](vertices.len)
+proc computeVertexNormals*(vertices: openArray[Point3], indices: openArray[int]): seq[V3] =
+  result = newSeq[V3](vertices.len)
 
   for i in countup(0, indices.high, 3):
     let a = vertices[indices[i]]

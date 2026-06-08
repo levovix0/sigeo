@@ -13,7 +13,7 @@ proc lineSection*(startPoint, endPoint: Point2): LineSection =
     when defined(sigeo_return_small_curve_when_costructed_curve_has_zero_length):
       return LineSection(
         startPoint: startPoint,
-        endPoint: startPoint + vec2(1e-6, 0)
+        endPoint: startPoint + v2(1e-6, 0)
       )
     
     elif true or defined(sigeo_raise_exception_when_costructed_curve_has_zero_length):
@@ -30,7 +30,7 @@ proc b*(line: LineSection): Point2 = line.endPoint
 
 
 
-proc toVec*(line: LineSection): Vec2 =
+proc toVec*(line: LineSection): V2 =
   ## retruns vector from start point to end point
   line.endPoint - line.startPoint
 
@@ -57,7 +57,7 @@ proc paramAtPoint*(line: LineSection, point: Point2): FloatParam =
     FloatParam (point.y - line.startPoint.y) / v.y
 
 
-proc direction*(line: LineSection): Vec2 =
+proc direction*(line: LineSection): V2 =
   line.toVec.normalize
 
 proc center*(line: LineSection): Point2 =

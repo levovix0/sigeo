@@ -1,13 +1,8 @@
 import std/[math]
 from std/fenv import epsilon
 
-when defined(sigeo_use_float32):
-  import pkg/vmath except Mat2, Mat3, Mat4, mat2, mat3, mat4, `$`, angle, isNaN
-  export vmath except Mat2, Mat3, Mat4, mat2, mat3, mat4, `$`, angle, isNaN
-
-elif true or defined(sigeo_use_float64):
-  import pkg/vmath except Vec2, Vec3, Mat2, Mat3, Mat4, vec2, vec3, mat2, mat3, mat4, `$`, angle, isNaN
-  export vmath except Vec2, Vec3, Mat2, Mat3, Mat4, vec2, vec3, mat2, mat3, mat4, `$`, angle, isNaN
+import pkg/vmath except Vec2, Vec3, Mat2, Mat3, Mat4, vec2, vec3, mat2, mat3, mat4, `$`, angle, isNaN
+export vmath except Vec2, Vec3, Mat2, Mat3, Mat4, vec2, vec3, mat2, mat3, mat4, `$`, angle, isNaN
 
 import ../macros/[genAliases]
 
@@ -16,39 +11,61 @@ const sigeo_axisY_up* = defined(sigeo_axisY_up) or not defined(sigeo_axisY_down)
   ## set to false (-d:sigeoYAxisUp=false) for screen/pixel coordinates where Y points down
 
 
-type
-  FVec2* = GVec2[float32]
-  FVec3* = GVec3[float32]
-  FVec4* = GVec4[float32]
-
 when defined(sigeo_use_float32):
   type
     Float* = float32
+    V1* = float32
+    V2* = vmath.Vec2
+    V3* = vmath.Vec3
+    V4* = vmath.Vec4
+    M2* = vmath.Mat2
+    M3* = vmath.Mat3
+    M4* = vmath.Mat4
 
 elif true or defined(sigeo_use_float64):
+  ## many computational geometry libraries use float64 by default, but vmath already uses float32,
+  ## so to distinguish "geometry" vectors from "graphics" vectors they are named V2/V3, instead of Vec2/Vec3
+
   type
     Float* = float64
-    Vec2* = GVec2[float64]
-    Vec3* = GVec3[float64]
-    Vec4* = GVec4[float64]
+    V1* = float64
+    V2* = vmath.DVec2
+    V3* = vmath.DVec3
+    V4* = vmath.DVec4
+    M2* = vmath.DMat2
+    M3* = vmath.DMat3
+    M4* = vmath.DMat4
 
 type
   FloatParam* = distinct Float
     ## A float guaranteed to be from 0 to 1.
 
-  NormalVec2* = distinct Vec2
-    ## A vector guaranteed to be 1 unit long.
+  NormalVec2* = distinct V2
+    ## A Vec2 guaranteed to be 1 unit long.
 
-  NormalVec3* = distinct Vec3
-    ## A vector guaranteed to be 1 unit long.
+  NormalVec3* = distinct V3
+    ## A Vec3 guaranteed to be 1 unit long.
+  
+
+  NV1* = FloatParam
+    ## A float guaranteed to be from 0 to 1.
+
+  NV2* = NormalVec2
+    ## A Vec2 guaranteed to be 1 unit long.
+
+  NV3* = NormalVec3
+    ## A Vec3 guaranteed to be 1 unit long.
+
 
   AngleDirection* = enum
     counterclockwise
     clockwise
 
 
-template genVecConstructors(lower, upper, typ: untyped) =
+template genOnlyVecConstructors(lower, upper, typ: untyped) =
   ## Generate vector constructor for your own type.
+  ## Theese are only diffirent from vmath ones that theese don't generate the `$` procs
+  ## todo: propose to split `$` and constructor generation to vmath
 
   proc `lower 2`*(): `upper 2` = gvec2[typ](typ(0), typ(0))
   proc `lower 3`*(): `upper 3` = gvec3[typ](typ(0), typ(0), typ(0))
@@ -78,47 +95,114 @@ template genVecConstructors(lower, upper, typ: untyped) =
     gvec4[typ](typ(a[0]), typ(a[1]), typ(b[0]), typ(b[1]))
 
 
-genVecConstructors(fvec, FVec, float32)
+template genOnlyMatConstructors(lower, upper, T: untyped) =
+  ## Generate matrix constructor for your own type.
+  ## Theese are only diffirent from vmath ones that theese don't generate the `$` procs
 
-proc fvec2*(xy: FVec3): FVec2 {.inline.} = vmath.vec2(xy.x, xy.y)
-proc fvec3*(xy: FVec2): FVec3 {.inline.} = vmath.vec3(xy.x, xy.y, 0)
+  proc `lower 2`*(
+    m00, m01,
+    m10, m11: T
+  ): `upper 2` =
+    result[0, 0] = m00; result[0, 1] = m01
+    result[1, 0] = m10; result[1, 1] = m11
 
-proc fvec3*(xy: FVec2, z: float32): FVec3 {.inline.} = vmath.vec3(xy.x, xy.y, z)
-proc fvec3*(x: float32, yz: FVec2): FVec3 {.inline.} = vmath.vec3(x, yz.x, yz.y)
+  proc `lower 3`*(
+    m00, m01, m02,
+    m10, m11, m12,
+    m20, m21, m22: T
+  ): `upper 3` =
+    result[0, 0] = m00; result[0, 1] = m01; result[0, 2] = m02
+    result[1, 0] = m10; result[1, 1] = m11; result[1, 2] = m12
+    result[2, 0] = m20; result[2, 1] = m21; result[2, 2] = m22
 
-proc fvec2*(x, y: float32): FVec2 {.inline.} = vmath.vec2(x, y)
-proc fvec3*(x, y, z: float32): FVec3 {.inline.} = vmath.vec3(x, y, z)
+  proc `lower 4`*(
+    m00, m01, m02, m03,
+    m10, m11, m12, m13,
+    m20, m21, m22, m23,
+    m30, m31, m32, m33: T
+  ): `upper 4` =
+    result[0, 0] = m00; result[0, 1] = m01
+    result[0, 2] = m02; result[0, 3] = m03
+
+    result[1, 0] = m10; result[1, 1] = m11
+    result[1, 2] = m12; result[1, 3] = m13
+
+    result[2, 0] = m20; result[2, 1] = m21
+    result[2, 2] = m22; result[2, 3] = m23
+
+    result[3, 0] = m30; result[3, 1] = m31
+    result[3, 2] = m32; result[3, 3] = m33
+
+  proc `lower 2`*(a, b: GVec2[T]): `upper 2` =
+    gmat2[T](
+      a.x, a.y,
+      b.x, b.y
+    )
+  proc `lower 3`*(a, b, c: GVec3[T]): `upper 3` =
+    gmat3[T](
+      a.x, a.y, a.z,
+      b.x, b.y, b.z,
+      c.x, c.y, c.z,
+    )
+  proc `lower 4`*(a, b, c, d: GVec4[T]): `upper 4` =
+    gmat4[T](
+      a.x, a.y, a.z, a.w,
+      b.x, b.y, b.z, b.w,
+      c.x, c.y, c.z, c.w,
+      d.x, d.y, d.z, d.w,
+    )
+
+  proc `lower 2`*(): `upper 2` =
+    gmat2[T](
+      1.T, 0.T,
+      0.T, 1.T
+    )
+  proc `lower 3`*(): `upper 3` =
+    gmat3[T](
+      1.T, 0.T, 0.T,
+      0.T, 1.T, 0.T,
+      0.T, 0.T, 1.T
+    )
+  proc `lower 4`*(): `upper 4` =
+    gmat4[T](
+      1.T, 0.T, 0.T, 0.T,
+      0.T, 1.T, 0.T, 0.T,
+      0.T, 0.T, 1.T, 0.T,
+      0.T, 0.T, 0.T, 1.T
+    )
 
 
 when defined(sigeo_use_float32):
-  discard
+  genOnlyVecConstructors(v, V, float32)
+  genOnlyMatConstructors(m, M, float32)
 
 elif true or defined(sigeo_use_float64):
-  genVecConstructors(vec, Vec, float64)
+  genOnlyVecConstructors(v, V, float64)
+  genOnlyMatConstructors(m, M, float64)
 
 
-proc vec2*(xy: Vec3): Vec2 {.inline.} = vec2(xy.x, xy.y)
-proc vec3*(xy: Vec2): Vec3 {.inline.} = vec3(xy.x, xy.y, 0)
+proc v2*(xy: V3): V2 {.inline.} = v2(xy.x, xy.y)
+proc v3*(xy: V2): V3 {.inline.} = v3(xy.x, xy.y, 0)
 
-proc vec3*(xy: Vec2, z: float64): Vec3 {.inline.} = vec3(xy.x, xy.y, z)
-proc vec3*(x: float64, yz: Vec2): Vec3 {.inline.} = vec3(x, yz.x, yz.y)
+proc v3*(xy: V2, z: float64): V3 {.inline.} = v3(xy.x, xy.y, z)
+proc v3*(x: float64, yz: V2): V3 {.inline.} = v3(x, yz.x, yz.y)
 
 
-proc almostEqual*(a, b: Vec2, unitsInLastSpace: Natural = 4): bool {.aliases: [`~==`].} =
+proc almostEqual*(a, b: V2, unitsInLastSpace: Natural = 4): bool {.aliases: [`~==`].} =
   a.x.almostEqual(b.x, unitsInLastSpace) and
   a.y.almostEqual(b.y, unitsInLastSpace)
 
-proc almostEqual*(a, b: Vec3, unitsInLastSpace: Natural = 4): bool {.aliases: [`~==`].} =
+proc almostEqual*(a, b: V3, unitsInLastSpace: Natural = 4): bool {.aliases: [`~==`].} =
   a.x.almostEqual(b.x, unitsInLastSpace) and
   a.y.almostEqual(b.y, unitsInLastSpace) and
   a.z.almostEqual(b.z, unitsInLastSpace)
 
 
-proc almostEqual*(a, b: Vec2, tolerance: float32): bool =
+proc almostEqual*(a, b: V2, tolerance: float32): bool =
   (a.x == b.x or abs(a.x - b.x) < tolerance) and
   (a.y == b.y or abs(a.y - b.y) < tolerance)
 
-proc almostEqual*(a, b: Vec3, tolerance: float32): bool =
+proc almostEqual*(a, b: V3, tolerance: float32): bool =
   (a.x == b.x or abs(a.x - b.x) < tolerance) and
   (a.y == b.y or abs(a.y - b.y) < tolerance) and
   (a.z == b.z or abs(a.z - b.z) < tolerance)
@@ -145,19 +229,19 @@ template sureGreater*(a, b: Float, unitsInLastPlace: Natural = 4): bool {.aliase
 
 
 
-proc signedAngleToPlusX*(a: Vec2): Float {.aliases: [angleToPlusX, angleToX, planarAngle, theta].} =
+proc signedAngleToPlusX*(a: V2): Float {.aliases: [angleToPlusX, angleToX, planarAngle, theta].} =
   ## returns the (signed) angle between a and +X axis in radians
   ## positive if a is counterclockwise from +X, negative otherwise
   ## use only when it's really needed, as it may lead to unoptimal code
   arctan2(a.y, a.x)
 
 
-proc skew*(a, b: Vec2): Float {.aliases: [skewProduct, pseudoScalarProduct].} =
+proc skew*(a, b: V2): Float {.aliases: [skewProduct, pseudoScalarProduct].} =
   ## returns pseudo scalar product, equal to a.length * b.length * sin(a.signedAngleTo(b))
   a.x * b.y - a.y * b.x
 
 
-proc angleTo*(a, b: Vec2): Float =
+proc angleTo*(a, b: V2): Float =
   ## returns the (unsigned) angle between two vectors in radians
   let cosAngle = a.dot(b) / (a.length * b.length)
   if cosAngle > 1: return 0
@@ -177,7 +261,7 @@ proc angleTo*(a, b: Vec2): Float =
   arccos(cosAngle)
 
 
-proc signedAngleTo*(a, b: Vec2): Float =
+proc signedAngleTo*(a, b: V2): Float =
   ## returns the signed angle between two vectors in radians
   ## positive if b is counterclockwise from a, negative otherwise
   let cosAngle = a.dot(b) / (a.length * b.length)
@@ -201,7 +285,7 @@ proc signedAngleTo*(a, b: Vec2): Float =
     arccos(cosAngle)
 
 
-proc angleTo*(a, b: Vec3): Float =
+proc angleTo*(a, b: V3): Float =
   ## returns the (unsigned) angle between two 3D vectors in radians
   let cosAngle = a.dot(b) / (a.length * b.length)
 
@@ -219,7 +303,7 @@ proc angleTo*(a, b: Vec3): Float =
   arccos(cosAngle)
 
 
-proc toPolar*(v: Vec2): tuple[theta: Float, r: Float] =
+proc toPolar*(v: V2): tuple[theta: Float, r: Float] =
   ## returns the polar coordinates of a 2D vector
   (v.signedAngleToPlusX, v.length)
 
@@ -237,11 +321,11 @@ converter toUnspecified*(v: FloatParam): Float = v.Float
 
 
 
-proc normal*(v: Vec2): NormalVec2 =
+proc normal*(v: V2): NormalVec2 =
   when not defined(sigeo_assume_no_zeroLen_normal_vector):
-    if v ~== vec2(0, 0):
+    if v ~== v2(0, 0):
       when defined(sigeo_return_axisX_when_zeroLen_normal_vector):
-        return vec2(1, 0).NormalVec2
+        return v2(1, 0).NormalVec2
 
       elif true or defined(sigeo_raise_valueError_when_zeroLen_normal_vector):
         raise ValueError.newException("Zero length normal vector")
@@ -249,11 +333,11 @@ proc normal*(v: Vec2): NormalVec2 =
   normalize(v).NormalVec2
 
 
-proc normal*(v: Vec3): NormalVec3 =
+proc normal*(v: V3): NormalVec3 =
   when not defined(sigeo_assume_no_zeroLen_normal_vector):
-    if v ~== vec3(0, 0, 0):
+    if v ~== v3(0, 0, 0):
       when defined(sigeo_return_axisX_when_zeroLen_normal_vector):
-        return vec3(1, 0, 0).NormalVec3
+        return v3(1, 0, 0).NormalVec3
 
       elif true or defined(sigeo_raise_valueError_when_zeroLen_normal_vector):
         raise ValueError.newException("Zero length normal vector")
@@ -261,90 +345,91 @@ proc normal*(v: Vec3): NormalVec3 =
   normalize(v).NormalVec3
 
 
-converter toNormal*(v: Vec2): NormalVec2 = v.normal
-converter toUnspecified*(v: NormalVec2): Vec2 = v.Vec2
+converter toNormal*(v: V2): NormalVec2 = v.normal
+converter toUnspecified*(v: NormalVec2): V2 = v.V2
 
 
-converter toNormal*(v: Vec3): NormalVec3 = v.normal
-converter toUnspecified*(v: NormalVec3): Vec3 = v.Vec3
+converter toNormal*(v: V3): NormalVec3 = v.normal
+converter toUnspecified*(v: NormalVec3): V3 = v.V3
 
 
+# todo: make procs generic (use GVec2)
 
-proc lenOnAxis*(v: Vec2, axis: NormalVec2): Float {.inline, aliases: [lengthOnAxis].} =
-  v.dot(axis.Vec2)
+proc lenOnAxis*(v: V2, axis: NormalVec2): Float {.inline, aliases: [lengthOnAxis].} =
+  v.dot(axis.V2)
 
-proc projectToAxis*(v: Vec2, axis: NormalVec2): Vec2 {.inline.} =
-  axis.Vec2 * v.lenOnAxis(axis)
+proc projectToAxis*(v: V2, axis: NormalVec2): V2 {.inline.} =
+  axis.V2 * v.lenOnAxis(axis)
 
-proc ortoProject*(v: Vec2, normal: NormalVec2): Vec2 {.inline.} =
+proc ortoProject*(v: V2, normal: NormalVec2): V2 {.inline.} =
   v - v.projectToAxis(normal)
 
 
 
-proc lenOnAxis*(v: Vec3, axis: NormalVec3): Float {.inline, aliases: [lengthOnAxis].} =
-  v.dot(axis.Vec3)
+proc lenOnAxis*(v: V3, axis: NormalVec3): Float {.inline, aliases: [lengthOnAxis].} =
+  v.dot(axis.V3)
 
-proc projectToAxis*(v: Vec3, axis: NormalVec3): Vec3 {.inline.} =
-  axis.Vec3 * v.lenOnAxis(axis)
+proc projectToAxis*(v: V3, axis: NormalVec3): V3 {.inline.} =
+  axis.V3 * v.lenOnAxis(axis)
 
-proc ortoProject*(v: Vec3, normal: NormalVec3): Vec3 {.inline.} =
+proc ortoProject*(v: V3, normal: NormalVec3): V3 {.inline.} =
   v - v.projectToAxis(normal)
 
 
 proc normal*(xAxis, yAxis: NormalVec3): NormalVec3 =
   ## returns a vector, perpendicular to `xAxis` and `yAxis`,
   ## and such that the smallest rotation around it from xAxis to yAxis is counter-clockwise
-  result = xAxis.Vec3.cross(yAxis.Vec3).NormalVec3
+  result = xAxis.V3.cross(yAxis.V3).NormalVec3
   
-  if result ~== vec3(0, 0, 0):
+  if result ~== v3(0, 0, 0):
     when defined(sigeo_return_axisX_when_zeroLen_normal_vector):
-      return vec3(1, 0, 0).NormalVec3
+      return v3(1, 0, 0).NormalVec3
 
     elif true or defined(sigeo_raise_valueError_when_zeroLen_normal_vector):
       raise ValueError.newException("Zero length normal vector from collinear x and y axises")
 
 
-proc rotate*(v: Vec2, angle_rad: Float): Vec2 =
-  v * cos(angle_rad) + vec2(-v.y, v.x) * sin(angle_rad)
+proc rotate*(v: V2, angle_rad: Float): V2 =
+  v * cos(angle_rad) + v2(-v.y, v.x) * sin(angle_rad)
 
 
-proc rotate_90deg_counterClockwise*(v: Vec2): Vec2 {.aliases: [rotate_90deg_left, rot90l, rot90cc].} =
-  vec2(v.y, -v.x)
+proc rotate_90deg_counterClockwise*(v: V2): V2 {.aliases: [rotate_90deg_left, rot90l, rot90cc].} =
+  v2(v.y, -v.x)
 
-proc rotate_90deg_clockwise*(v: Vec2): Vec2 {.aliases: [rotate_90deg_right, rot90r, rot90c].} =
-  vec2(-v.y, v.x)
-
-
-proc rotate*(v: Vec3, axis: NormalVec3, angle: Float): Vec3 =
-  v * cos(angle) + cross(v, axis.Vec3) * sin(angle) + axis.Vec3 * v.lenOnAxis(axis) * (1 - cos(angle))
+proc rotate_90deg_clockwise*(v: V2): V2 {.aliases: [rotate_90deg_right, rot90r, rot90c].} =
+  v2(-v.y, v.x)
 
 
-proc rotateX*(v: Vec3, angle: Float): Vec3 =
-  v.rotate(vec3(1, 0, 0).NormalVec3, angle)
-
-proc rotateY*(v: Vec3, angle: Float): Vec3 =
-  v.rotate(vec3(0, 1, 0).NormalVec3, angle)
-
-proc rotateZ*(v: Vec3, angle: Float): Vec3 =
-  v.rotate(vec3(0, 0, 1).NormalVec3, angle)
+proc rotate*(v: V3, axis: NormalVec3, angle: Float): V3 =
+  v * cos(angle) + cross(v, axis.V3) * sin(angle) + axis.V3 * v.lenOnAxis(axis) * (1 - cos(angle))
 
 
-proc isParallel*(a, b: Vec2): bool =
+proc rotateX*(v: V3, angle: Float): V3 =
+  v.rotate(v3(1, 0, 0).NormalVec3, angle)
+
+proc rotateY*(v: V3, angle: Float): V3 =
+  v.rotate(v3(0, 1, 0).NormalVec3, angle)
+
+proc rotateZ*(v: V3, angle: Float): V3 =
+  v.rotate(v3(0, 0, 1).NormalVec3, angle)
+
+
+proc isParallel*(a, b: V2): bool =
   a.dot(b.rotate_90deg_counterClockwise) ~== 0
 
-proc isPerpendicular*(a, b: Vec2): bool =
+proc isPerpendicular*(a, b: V2): bool =
   a.dot(b) ~== 0
 
-proc isCodirectional*(a, b: Vec2): bool =
+proc isCodirectional*(a, b: V2): bool =
   a / a.length ~== b / b.length
 
 
-proc isParallel*(a, b: Vec3): bool =
-  a.cross(b) ~== vec3()
+proc isParallel*(a, b: V3): bool =
+  a.cross(b) ~== v3()
 
-proc isPerpendicular*(a, b: Vec3): bool =
+proc isPerpendicular*(a, b: V3): bool =
   a.dot(b) ~== 0
 
-proc isCodirectional*(a, b: Vec3): bool =
+proc isCodirectional*(a, b: V3): bool =
   a / a.length ~== b / b.length
 

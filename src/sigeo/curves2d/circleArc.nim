@@ -49,10 +49,10 @@ proc fullCircle*(circle: CircleArc): bool {.aliases: [closed, isCircle, isFullCi
 
 
 proc startPoint*(circle: CircleArc): Point2 =
-  circle.center + circle.radius * vec2(cos(circle.startAngle), sin(circle.startAngle))
+  circle.center + circle.radius * v2(cos(circle.startAngle), sin(circle.startAngle))
 
 proc endPoint*(circle: CircleArc): Point2 =
-  circle.center + circle.radius * vec2(cos(circle.endAngle), sin(circle.endAngle))
+  circle.center + circle.radius * v2(cos(circle.endAngle), sin(circle.endAngle))
 
 
 proc angularLength*(circle: CircleArc): Float =
@@ -73,13 +73,9 @@ proc length*(circle: CircleArc): Float =
   abs(circle.angularLength) * circle.radius
 
 
-proc paramLength*(circle: CircleArc, t: FloatParam): Float {.deprecated: "always 1".} =
-  1
-
-
 proc pointAtParam*(circle: CircleArc, t: FloatParam): Point2 =
   let angle = circle.startAngle + t * circle.angularLength
-  circle.center + circle.radius * vec2(cos(angle), sin(angle))
+  circle.center + circle.radius * v2(cos(angle), sin(angle))
 
 
 proc paramAtPoint*(circle: CircleArc, point: Point2): FloatParam =

@@ -3,19 +3,6 @@ import ../macros/[genAliases]
 
 
 type
-  Mat2* = GMat2[Float]
-  Mat3* = GMat3[Float]
-  Mat4* = GMat4[Float]
-
-
-when defined(sigeo_use_float32):
-  from vmath import mat2, mat3, mat4
-  export mat2, mat3, mat4
-elif defined(sigeo_use_float64) or true:
-  genMatConstructor(mat, Mat, Float)
-
-
-type
   Placement* = object
     pos*: Point3
     axisX*, axisY*, axisZ*: NormalVec3
@@ -34,7 +21,7 @@ proc zAxis*(plane: Placement): NormalVec3 =
   plane.axisZ
 
 
-proc transformBy*(x: Vec3, cs: Placement): Vec3 =
+proc transformBy*(x: V3, cs: Placement): V3 =
   ## returns a vector with transformation matrix applied, ignores translation
   cs.axisX * x.x + cs.axisY * x.y + cs.axisZ * x.z
 
@@ -44,35 +31,35 @@ proc transformBy*(x: Point3, cs: Placement): Point3 =
   cs.pos + cs.axisX * x.x + cs.axisY * x.y + cs.axisZ * x.z
 
 
-proc transformBy*(x: Vec2, cs: Placement): Vec3 =
-  vec3(x.x, x.y, 0).transformBy(cs)
+proc transformBy*(x: V2, cs: Placement): V3 =
+  v3(x.x, x.y, 0).transformBy(cs)
 
 proc transformBy*(x: Point2, cs: Placement): Point3 =
   point3(x.x, x.y, 0).transformBy(cs)
 
 
-proc toMatrix*(cs: Placement): Mat4 =
-  mat4(
+proc toMatrix*(cs: Placement): M4 =
+  m4(
     cs.axisX.x, cs.axisX.y, cs.axisX.z, 0,
     cs.axisY.x, cs.axisY.y, cs.axisY.z, 0,
     cs.axisZ.x, cs.axisZ.y, cs.axisZ.z, 0,
     cs.pos.x, cs.pos.y, cs.pos.z, 1
   )
 
-proc toPlacement*(m: Mat4): Placement =
-  result.axisX = vec3(m[0, 0], m[0, 1], m[0, 2]).normal
-  result.axisY = vec3(m[1, 0], m[1, 1], m[1, 2]).normal
-  result.axisZ = vec3(m[2, 0], m[2, 1], m[2, 2]).normal
+proc toPlacement*(m: M4): Placement =
+  result.axisX = v3(m[0, 0], m[0, 1], m[0, 2]).normal
+  result.axisY = v3(m[1, 0], m[1, 1], m[1, 2]).normal
+  result.axisZ = v3(m[2, 0], m[2, 1], m[2, 2]).normal
   result.pos = point3(m[3, 0], m[3, 1], m[3, 2])
 
 
 
 proc transformBy*(a, b: Placement): Placement =
   ## if a is transformatrion from b and b is transformatrion from world, returns coordinate system from world to entity
-  result.pos = Point3 a.pos.Vec3.transformBy(b) + b.pos.Vec3
-  result.axisX = a.axisX.Vec3.transformBy(b).normal
-  result.axisY = a.axisY.Vec3.transformBy(b).normal
-  result.axisZ = a.axisZ.Vec3.transformBy(b).normal
+  result.pos = Point3 a.pos.V3.transformBy(b) + b.pos.V3
+  result.axisX = a.axisX.V3.transformBy(b).normal
+  result.axisY = a.axisY.V3.transformBy(b).normal
+  result.axisZ = a.axisZ.V3.transformBy(b).normal
   
 
 
@@ -124,11 +111,11 @@ proc toPlanar*(point: Point3, plane: Placement): Point2 =
   point2(p.x, p.y)
 
 
-proc toPlanar*(v: Vec3, axisX, axisY: NormalVec3): Vec2 =
+proc toPlanar*(v: V3, axisX, axisY: NormalVec3): V2 =
   ## returns a 2d vector in `cs` coordinate system
-  vec2(v.lenOnAxis(axisX), v.lenOnAxis(axisY))
+  v2(v.lenOnAxis(axisX), v.lenOnAxis(axisY))
 
-proc toPlanar*(v: Vec3, plane: Placement): Vec2 =
+proc toPlanar*(v: V3, plane: Placement): V2 =
   ## returns a 2d vector in `plane` coordinate system
   v.toPlanar(plane.axisX, plane.axisY)
 
@@ -138,11 +125,11 @@ proc ortoProjectToPlane*(point: Point3, plane: Placement): Point3 =
   point - plane.axisZ * point.signedDistanceToPlane(plane.axisZ, plane.pos)
 
 
-proc ortoProjectToPlane*(v: Vec3, axisZ: NormalVec3): Vec3 =
+proc ortoProjectToPlane*(v: V3, axisZ: NormalVec3): V3 =
   ## returns a vector on plane in world coordinates, closest to `v`
   v - axisZ * v.lenOnAxis(axisZ)
 
-proc ortoProjectToPlane*(v: Vec3, plane: Placement): Vec3 =
+proc ortoProjectToPlane*(v: V3, plane: Placement): V3 =
   ## returns a vector on plane in world coordinates, closest to `v`
   v - plane.axisZ * v.lenOnAxis(plane.axisZ)
 
@@ -163,14 +150,14 @@ proc placement*(normal: NormalVec3, basePoint: Point3 = point3(0, 0, 0)): Placem
   ## tries to pick reasonable x and y axis
   result.pos = basePoint
   
-  if normal.Vec3 ~== vec3(0, 0, 1):
-    result.axisX = vec3(1, 0, 0).NormalVec3
-  elif normal.Vec3 ~== vec3(0, 0, -1):
-    result.axisX = vec3(-1, 0, 0).NormalVec3
+  if normal.V3 ~== v3(0, 0, 1):
+    result.axisX = v3(1, 0, 0).NormalVec3
+  elif normal.V3 ~== v3(0, 0, -1):
+    result.axisX = v3(-1, 0, 0).NormalVec3
   else:
-    result.axisX = normal.Vec3.ortoProject(vec3(0, 0, 1).NormalVec3).rotateZ(-PI / 2).normal
+    result.axisX = normal.V3.ortoProject(v3(0, 0, 1).NormalVec3).rotateZ(-PI / 2).normal
   
-  result.axisY = normal.Vec3.cross(result.axisX.Vec3).normal
+  result.axisY = normal.V3.cross(result.axisX.V3).normal
   result.axisZ = normal
 
 
@@ -183,25 +170,25 @@ proc placement*(point1, point2, point3: Point3): Placement {.aliases: [plane].} 
 when isMainModule:
   import print
   
-  print vec3(1, 0, 0).cross(vec3(0, 1, 0))
-  let p = placement(vec3(0, 1, 0).NormalVec3, point3(1, 1, 1), vec3(1, 0, 0).NormalVec3)
-  print point3(1, 1, 1).distanceToPlane(vec3(0, 0, 1).NormalVec3, point3(-1, 0, -1))
+  print v3(1, 0, 0).cross(v3(0, 1, 0))
+  let p = placement(v3(0, 1, 0).NormalVec3, point3(1, 1, 1), v3(1, 0, 0).NormalVec3)
+  print point3(1, 1, 1).distanceToPlane(v3(0, 0, 1).NormalVec3, point3(-1, 0, -1))
   print point3(1, 2, 0).toWorld(p)
   print point3(1, 2, 0).toWorld(p).fromWorld(p)
 
-  print vec3(9 / 15 + 1e-16, 1, 7 / 13) == vec3(3 / 5, 1, 7 / 13)
-  print vec3(9 / 15 + 1e-16, 1, 7 / 13) ~== vec3(3 / 5, 1, 7 / 13)
+  print v3(9 / 15 + 1e-16, 1, 7 / 13) == v3(3 / 5, 1, 7 / 13)
+  print v3(9 / 15 + 1e-16, 1, 7 / 13) ~== v3(3 / 5, 1, 7 / 13)
 
-  print placement(vec3(1, 1, 1).normal)
-  print placement(-vec3(1, 1, 1).normal)
+  print placement(v3(1, 1, 1).normal)
+  print placement(-v3(1, 1, 1).normal)
 
-  print vec2(1, 1).angleTo(vec2(0, 1)).toDegrees.round
-  print vec2(1, 1).angleTo(vec2(1, 0)).toDegrees.round
-  print vec2(1, 1).angleTo(vec2(-1, -1)).toDegrees.round
-  print vec2(1, 1).angleTo(vec2(1, -2)).toDegrees.round
+  print v2(1, 1).angleTo(v2(0, 1)).toDegrees.round
+  print v2(1, 1).angleTo(v2(1, 0)).toDegrees.round
+  print v2(1, 1).angleTo(v2(-1, -1)).toDegrees.round
+  print v2(1, 1).angleTo(v2(1, -2)).toDegrees.round
 
-  print vec2(1, 1).signedAngleTo(vec2(0, 1)).toDegrees.round
-  print vec2(1, 1).signedAngleTo(vec2(1, 0)).toDegrees.round
-  print vec2(1, 1).signedAngleTo(vec2(-1, -1)).toDegrees.round
-  print vec2(1, 1).signedAngleTo(vec2(1, -2)).toDegrees.round
+  print v2(1, 1).signedAngleTo(v2(0, 1)).toDegrees.round
+  print v2(1, 1).signedAngleTo(v2(1, 0)).toDegrees.round
+  print v2(1, 1).signedAngleTo(v2(-1, -1)).toDegrees.round
+  print v2(1, 1).signedAngleTo(v2(1, -2)).toDegrees.round
 

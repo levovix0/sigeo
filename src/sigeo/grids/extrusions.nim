@@ -82,7 +82,7 @@ proc extrusionShellGrid*(
   let plane = spine.placementAtParam(0)
   let baseMat = plane.toMatrix
   for cpt in contour:
-    result.points.add((baseMat * cpt.Vec3).Point3)
+    result.points.add((baseMat * cpt.V3).Point3)
 
   var idxStart = 0'i32
   let count = contour.len.int32
@@ -91,7 +91,7 @@ proc extrusionShellGrid*(
     let mat = place.toMatrix
     
     for cpt in contour:
-      result.points.add((mat * cpt.Vec3).Point3)
+      result.points.add((mat * cpt.V3).Point3)
 
     if contourClosed:
       for idx in 0'i32 .. count - 1:
