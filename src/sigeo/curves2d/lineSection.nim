@@ -99,6 +99,11 @@ proc almostEqual*(lineA, lineB: LineSection): bool {.aliases: [`~==`].} =
 
 
 
+proc cut*(curve: LineSection, a, b: FloatParam): LineSection =
+  LineSection(startPoint: curve.pointAtParam(a), endPoint: curve.pointAtParam(b))
+
+
+
 when sigeo_backend == SigeoOpencascade:
   proc toOpencascadeShape*(this: LineSection;): TopoDS_Shape =
     bRepBuilderAPI_MakeEdge(

@@ -102,9 +102,22 @@ proc length*(arc: EllipseArc): Float =
   abs(half) * sum
 
 
-proc pointAtParam*(arc: EllipseArc, t: FloatParam): Point2 =
-  let angle = arc.startAngle + Float(t) * arc.angularLength
-  arc.center + v2(arc.size.x / 2 * cos(angle), arc.size.y / 2 * sin(angle))
+proc angleAtParam*(curve: EllipseArc, t: FloatParam): Float {.inline.} =
+  curve.startAngle + t * curve.angularLength
+
+proc pointAtParam*(curve: EllipseArc, t: FloatParam): Point2 =
+  let angle = curve.angleAtParam(t)
+  curve.center + v2(curve.size.x / 2 * cos(angle), curve.size.y / 2 * sin(angle))
+
+
+proc cut*(curve: EllipseArc, a, b: FloatParam): EllipseArc =
+  EllipseArc(
+    center: curve.center,
+    size: curve.size,
+    startAngle: curve.angleAtParam(a),
+    endAngle: curve.angleAtParam(b),
+    direction: (if (a <= b) == (curve.direction == counterclockwise): counterclockwise else: clockwise),
+  )
 
 
 

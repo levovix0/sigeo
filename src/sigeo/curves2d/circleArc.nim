@@ -74,12 +74,15 @@ proc angularLength*(circle: CircleArc): Float =
       if diff >= 0: diff - 2 * Pi else: diff
 
 
-proc length*(circle: CircleArc): Float =
+proc length*(circle: CircleArc): Float {.inline.} =
   abs(circle.angularLength) * circle.radius
 
 
+proc angleAtParam*(curve: CircleArc, t: FloatParam): Float {.inline.} =
+  curve.startAngle + t * curve.angularLength
+
 proc pointAtParam*(circle: CircleArc, t: FloatParam): Point2 =
-  let angle = circle.startAngle + t * circle.angularLength
+  let angle = circle.angleAtParam(t)
   circle.center + circle.radius * v2(cos(angle), sin(angle))
 
 
@@ -89,6 +92,17 @@ proc paramAtPoint*(circle: CircleArc, point: Point2): FloatParam =
   let v = point - circle.center
   let angle = arctan2(v.y, v.x)
   FloatParam ((angle - circle.startAngle) mod (Pi*2)) / circle.angularLength
+
+
+
+proc cut*(curve: CircleArc, a, b: FloatParam): CircleArc =
+  CircleArc(
+    center: curve.center,
+    radius: curve.radius,
+    startAngle: curve.angleAtParam(a),
+    endAngle: curve.angleAtParam(b),
+    direction: (if (a <= b) == (curve.direction == counterclockwise): counterclockwise else: clockwise),
+  )
 
 
 
