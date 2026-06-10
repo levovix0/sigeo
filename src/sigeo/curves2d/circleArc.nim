@@ -1,5 +1,10 @@
-import ../core/[vectors, points]
+import ../core/[vectors, points, buildutils]
 import ../macros/[genAliases]
+import ./[icurve2d]
+
+when sigeo_backend == SigeoOpencascade:
+  import pkg/opencascade except cos, sin
+
 
 type
   CircleArc* = object
@@ -85,6 +90,19 @@ proc paramAtPoint*(circle: CircleArc, point: Point2): FloatParam =
   let angle = arctan2(v.y, v.x)
   FloatParam ((angle - circle.startAngle) mod (Pi*2)) / circle.angularLength
 
+
+
+when sigeo_backend == SigeoOpencascade:
+  proc toOpencascadeShape*(this: CircleArc;): TopoDS_Shape =
+    bRepBuilderAPI_MakeEdge(
+      gp_Circ(gp_Ax2(gp_Pnt(this.center.x, this.center.y, 0), gp_Dir(0, 0, 1)), this.radius),
+      (if this.direction == counterclockwise: this.startAngle else: this.endAngle),
+      (if this.direction == counterclockwise: this.endAngle else: this.startAngle),
+    ).edge
+
+
+
+Curve2d.implementInterfaceFor(CircleArc)
 
 
 when isMainModule:

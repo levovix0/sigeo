@@ -1,3 +1,3 @@
-import ./core/[vectors, points, placement]
-export vectors, points, placement
+import ./core/[vectors, points, placement, bitmask, misc3d, buildutils]
+export vectors, points, placement, bitmask, misc3d, buildutils
 

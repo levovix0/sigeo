@@ -1,34 +1,26 @@
-import ../core/[vectors, points]
+import ../core/[vectors, points, buildutils]
 import ../macros/[interfaces]
-import ./[lineSection, circleArc, ellipseArc]
+export implementInterfaceFor
+
+when sigeo_backend == SigeoOpencascade:
+  import pkg/opencascade
 
 
-makeInterface Curve2d:
-  proc length(this;): Float
-  proc pointAtParam(this; param: FloatParam): Point2
+
+when sigeo_backend == SigeoOpencascade:
+  makeInterface Curve2d:
+    proc length(this;): Float
+    proc pointAtParam(this; param: FloatParam): Point2
+    proc toOpencascadeShape(this;): TopoDS_Shape
 
 
-Curve2d.implementInterfaceFor(LineSection, CircleArc, EllipseArc)
+else:
+  makeInterface Curve2d:
+    proc length(this;): Float
+    proc pointAtParam(this; param: FloatParam): Point2
 
 
 proc points*(arc: Curve2d, count: int = 32): seq[Point2] =
   for i in 0..count:
     result.add arc.pointAtParam(i / count)
-
-
-
-when isMainModule:
-  let line = lineSection(point2(0, 0), point2(2, 0))
-  let circle = circleArc(point2(4, 0), 2)
-
-  let arr = @[Curve2d line, circle]
-
-  for x in arr:
-    echo "[", x.vtable.typenameHash, "]"
-    echo "length = ", x.length
-    echo "pointAtParam(0) = ", x.pointAtParam(0)
-    echo "pointAtParam(0.25) = ", x.pointAtParam(0.25)
-    echo "pointAtParam(0.5) = ", x.pointAtParam(0.5)
-    echo "pointAtParam(0.75) = ", x.pointAtParam(0.75)
-    echo "pointAtParam(1) = ", x.pointAtParam(1)
 

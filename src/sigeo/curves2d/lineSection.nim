@@ -1,5 +1,10 @@
-import ../core/[vectors, points]
+import ../core/[vectors, points, buildutils]
 import ../macros/[genAliases]
+import ./[icurve2d]
+
+when sigeo_backend == SigeoOpencascade:
+  import pkg/opencascade
+
 
 type
   LineSection* = object
@@ -92,3 +97,15 @@ proc almostEqual*(lineA, lineB: LineSection): bool {.aliases: [`~==`].} =
   lineA.startPoint.almostEqual(lineB.startPoint) and lineA.endPoint.almostEqual(lineB.endPoint) or
   lineA.startPoint.almostEqual(lineB.endPoint) and lineA.endPoint.almostEqual(lineB.startPoint)
 
+
+
+when sigeo_backend == SigeoOpencascade:
+  proc toOpencascadeShape*(this: LineSection;): TopoDS_Shape =
+    bRepBuilderAPI_MakeEdge(
+      gp_Pnt(this.startPoint.x, this.startPoint.y, 0),
+      gp_Pnt(this.endPoint.x, this.endPoint.y, 0)
+    ).edge
+
+
+
+Curve2d.implementInterfaceFor(LineSection)

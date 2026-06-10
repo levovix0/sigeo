@@ -1,4 +1,9 @@
-import ../core/[vectors, points]
+import ../core/[vectors, points, buildutils]
+import ./icurve2d
+
+when sigeo_backend == SigeoOpencascade:
+  import pkg/opencascade
+
 
 type
   EllipseArc* = object
@@ -100,3 +105,17 @@ proc length*(arc: EllipseArc): Float =
 proc pointAtParam*(arc: EllipseArc, t: FloatParam): Point2 =
   let angle = arc.startAngle + Float(t) * arc.angularLength
   arc.center + v2(arc.size.x / 2 * cos(angle), arc.size.y / 2 * sin(angle))
+
+
+
+when sigeo_backend == SigeoOpencascade:
+  proc toOpencascadeShape*(this: EllipseArc;): TopoDS_Shape =
+    bRepBuilderAPI_MakeEdge(
+      gp_Elips(gp_Ax2(gp_Pnt(this.center.x, this.center.y, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0)), this.size.x, this.size.y),
+      (if this.direction == counterclockwise: this.startAngle else: this.endAngle),
+      (if this.direction == counterclockwise: this.endAngle else: this.startAngle),
+    ).edge
+
+
+
+Curve2d.implementInterfaceFor(EllipseArc)

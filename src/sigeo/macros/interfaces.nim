@@ -41,6 +41,9 @@ macro makeInterface*(name: untyped, body: untyped) =
   let nameStr = name.strVal
   let vtableName = ident("Vtable" & nameStr)
 
+  let ownedName = ident("Owned" & nameStr)
+  let conceptName = ident(nameStr & "Concept")
+
   proc lifecycleProc(fname: string, params: seq[NimNode]): NimNode =
     publicField(fname, procTy(params, newEmptyNode(), raisesNone=true))
 
@@ -113,8 +116,6 @@ macro makeInterface*(name: untyped, body: untyped) =
 
   # --- Proc generation ---
 
-  let ownedName = ident("Owned" & nameStr)
-
   proc mkProc(procName: NimNode, params: seq[NimNode], body: NimNode): NimNode =
     nnkProcDef.newTree(
       procName, newEmptyNode(), newEmptyNode(),
@@ -144,7 +145,7 @@ macro makeInterface*(name: untyped, body: untyped) =
     var fparams: seq[NimNode] = @[m.retType, newIdentDefs(ident"this", name)]
     var callArgs: seq[NimNode] = @[dot("this", "obj")]
     for p in m.nonThisParams:
-      fparams.add(nnkIdentDefs.newTree(p[0], p[1], newEmptyNode()))
+      fparams.add(p)
       callArgs.add(p[0])
     result.add mkProc(
       nnkPostfix.newTree(ident"*", ident(m.name)),
@@ -202,6 +203,39 @@ macro makeInterface*(name: untyped, body: untyped) =
     @[name, newIdentDefs(ident"this", ownedName)],
     newStmtList(nnkCast.newTree(name, ident"this"))
   )
+
+  # XXXConcept type
+  block:
+    var entries = newStmtList()
+    
+    for m in methods:
+      var call = nnkCall.newTree(ident(m.name), ident("this"))
+      for p in m.nonThisParams:
+        call.add(p[1])
+
+      entries.add nnkInfix.newTree(
+        ident("is"),
+        call,
+        m.retType
+      )
+
+    result.add nnkTypeSection.newTree(
+      nnkTypeDef.newTree(
+        nnkPostfix.newTree(
+          ident("*"),
+          conceptName
+        ),
+        newEmptyNode(),
+        nnkTypeClassTy.newTree(
+          nnkArgList.newTree(
+            ident("this")
+          ),
+          newEmptyNode(),
+          newEmptyNode(),
+          entries
+        )
+      )
+    )
 
 
 macro implementInterfaceFor*(name: typed, implementors: varargs[typed]) =

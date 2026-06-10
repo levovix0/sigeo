@@ -2,14 +2,14 @@ import ../macros/[genAliases]
 import ./[vectors, points]
 
 type
-  Ray3* {.aliases: [Ray3d].} = object
+  Ray3* = object
     origin* #[{.aliases: [o, p].}]#: Point3
-    dir* #[{.aliases: [d, direction].}]#: Vec3
+    dir* #[{.aliases: [d, direction].}]#: V3
   
-  Triangle2* {.aliases: [Triangle2d].} = object
+  Triangle2* = object
     p1*, p2*, p3*: Point2
 
-  Triangle3* {.aliases: [Triangle3d].} = object
+  Triangle3* = object
     p1*, p2*, p3*: Point3
 
 
