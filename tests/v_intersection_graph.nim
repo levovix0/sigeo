@@ -10,21 +10,19 @@ import std/[math, random]
 import pkg/[siwin, chroma]
 import rice
 import sigeo/[core, curves2d]
-import ./drawutils
+import ./[drawutils]
 
 const
   nCurves   = 60
-  margin    = 30'f32
+  margin    = 30.0
   winSize   = 800
   tolerance = 1e-6
 
-let win = newOpenglWindow(
+let app = newVisualTest(
   title = "sigeo intersection graph — [Space] regenerate",
   size = ivec2(winSize, winSize),
+  contentCenter = vec2(winSize / 2, winSize / 2),
 )
-opengl.loadExtensions()
-let ctx = newDrawContext()
-var aafb = ctx.newAntialiasedFramebuffer(win.size)
 
 
 proc randomCurves(): seq[OwnedCurve2d] =
@@ -73,54 +71,30 @@ proc edgePoints(edgeIdx: int): seq[Point2] =
     result.add graph.pointOnEdge(edgeIdx, i / nPoints)
 
 
-win.eventsHandler.onResize = proc(e: ResizeEvent) =
-  glViewport 0, 0, e.size.x.GlInt, e.size.y.GlInt
-  ctx.resize(aafb, e.size)
-  ctx.updateDrawingAreaSize(e.size)
-
-
-win.eventsHandler.onKey = proc(e: KeyEvent) =
+app.onKey proc(e: KeyEvent) =
   if e.pressed and e.key == Key.space:
     regenerate()
     redraw e.window
 
 
-win.eventsHandler.onRender = proc(e: RenderEvent) =
-  let vw = e.window.size.x.float32
-  let vh = e.window.size.y.float32
-
-  glViewport 0, 0, e.window.size.x.GlInt, e.window.size.y.GlInt
-  ctx.updateDrawingAreaSize(e.window.size)
-  ctx.resize(aafb, e.window.size)
-
-  ctx.drawInside aafb:
-    glClearColor(0.12, 0.12, 0.12, 1)
-    glClear(GL_COLOR_BUFFER_BIT)
-
-    ctx.viewport = combine(
-      scale(2'f32 / vw, -2'f32 / vh),
-      translate(-1'f32, 1'f32),
-    )
-
-    for i in 0..<graph.edges.len:
-      ctx.drawPolyline(edgePoints(i), edgeColor(i), thickness = 1.5)
-
-    for node in graph.nodes:
-      var distinctCurves: seq[int]
-      var hasEndpoint = false
-      for cp in node.curvePoints:
-        if cp.curve notin distinctCurves: distinctCurves.add cp.curve
-        if cp.param.Float == 0 or cp.param.Float == 1: hasEndpoint = true
-      let isIntersection = distinctCurves.len >= 2
-
-      let nodeColor =
-        if isIntersection and hasEndpoint: color(1.0, 1.0, 1.0)
-        elif isIntersection:               color(1.0, 0.25, 0.3)
-        else:                              color(0.2, 1.0, 0.4)
-
-      ctx.drawDot(node.position, nodeColor, radius = (if isIntersection: 3'f32 else: 2'f32))
-
-
 randomize()
 regenerate()
-run win
+
+app.run proc(ctx: DrawContext) =
+  for i in 0..<graph.edges.len:
+    ctx.drawPolyline(edgePoints(i), edgeColor(i), thickness = 1.5)
+
+  for node in graph.nodes:
+    var distinctCurves: seq[int]
+    var hasEndpoint = false
+    for cp in node.curvePoints:
+      if cp.curve notin distinctCurves: distinctCurves.add cp.curve
+      if cp.param.Float == 0 or cp.param.Float == 1: hasEndpoint = true
+    let isIntersection = distinctCurves.len >= 2
+
+    let nodeColor =
+      if isIntersection and hasEndpoint: color(1.0, 1.0, 1.0)
+      elif isIntersection:               color(1.0, 0.25, 0.3)
+      else:                              color(0.2, 1.0, 0.4)
+
+    ctx.drawDot(node.position, nodeColor, radius = (if isIntersection: 3'f32 else: 2'f32))

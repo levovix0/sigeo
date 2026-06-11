@@ -12,15 +12,15 @@
 ##  - teal rect = bounds of the cut piece — must tightly wrap the orange path
 
 import std/math
-import pkg/[siwin, chroma]
+import pkg/[chroma]
 import rice
 import sigeo/[core, curves2d]
-import ./drawutils
+import ./[drawutils]
 
 const
   nRows    = 7
-  cellSize = 130'f32
-  margin   = 24'f32
+  cellSize = 130.0
+  margin   = 24.0
 
 let cutParams = [
   (0.0, 1.0),
@@ -31,18 +31,16 @@ let cutParams = [
   (0.5, 1.0),
 ]
 
-let gridW = cutParams.len.float32 * cellSize
-let gridH = nRows.float32 * cellSize
+let gridW = cutParams.len.Float * cellSize
+let gridH = nRows.Float * cellSize
 let winW  = int32(margin*2 + gridW)
 let winH  = int32(margin*2 + gridH)
 
-let win = newOpenglWindow(
+let app = newVisualTest(
   title = "sigeo cut — rows=curves cols=(a,b); yellow dots must lie on orange",
   size = ivec2(winW, winH),
+  contentCenter = vec2(winW.float32 / 2, winH.float32 / 2),
 )
-opengl.loadExtensions()
-let ctx = newDrawContext()
-var aafb = ctx.newAntialiasedFramebuffer(win.size)
 
 
 type Cell = object
@@ -69,7 +67,7 @@ proc makeCell[C](curve: C, a, b: Float): Cell =
 
 
 proc cellAt(row: int, center: Point2, a, b: Float): Cell =
-  const r = cellSize.Float * 0.32
+  const r = cellSize * 0.32
   case row
   of 0: makeCell(circleArc(center, r), a, b)
   of 1: makeCell(circleArc(center, r, 0, 0, clockwise), a, b)
@@ -84,8 +82,8 @@ var cells: seq[tuple[cell: Cell, ok: bool]]
 for row in 0..<nRows:
   for col, (a, b) in cutParams:
     let center = point2(
-      margin.Float + (col.Float + 0.5) * cellSize.Float,
-      margin.Float + (row.Float + 0.5) * cellSize.Float,
+      margin + (col.Float + 0.5) * cellSize,
+      margin + (row.Float + 0.5) * cellSize,
     )
     let cell = cellAt(row, center, a, b)
 
@@ -100,51 +98,26 @@ for row in 0..<nRows:
     cells.add (cell, ok)
 
 
-win.eventsHandler.onResize = proc(e: ResizeEvent) =
-  glViewport 0, 0, e.size.x.GlInt, e.size.y.GlInt
-  ctx.resize(aafb, e.size)
-  ctx.updateDrawingAreaSize(e.size)
+app.run proc(ctx: DrawContext) =
+  # grid separators
+  for i in 0..max(nRows, cutParams.len):
+    if i <= cutParams.len:
+      let x = margin + i.Float * cellSize
+      ctx.drawSegment(point2(x, margin), point2(x, margin + gridH), color(0.2, 0.2, 0.2), thickness = 1)
+    if i <= nRows:
+      let y = margin + i.Float * cellSize
+      ctx.drawSegment(point2(margin, y), point2(margin + gridW, y), color(0.2, 0.2, 0.2), thickness = 1)
 
+  for (cell, ok) in cells:
+    ctx.drawBoundsRect(cell.cutBounds, color(0.1, 0.45, 0.45), thickness = 1)
 
-win.eventsHandler.onRender = proc(e: RenderEvent) =
-  let vw = e.window.size.x.float32
-  let vh = e.window.size.y.float32
+    ctx.drawPolyline(cell.origPts, color(0.45, 0.45, 0.45), thickness = 1.5)
 
-  glViewport 0, 0, e.window.size.x.GlInt, e.window.size.y.GlInt
-  ctx.updateDrawingAreaSize(e.window.size)
-  ctx.resize(aafb, e.window.size)
+    let cutColor = if ok: color(1.0, 0.55, 0.25) else: color(1.0, 0.1, 0.1)
+    ctx.drawPolyline(cell.cutPts, cutColor, thickness = 2.5)
 
-  ctx.drawInside aafb:
-    glClearColor(0.12, 0.12, 0.12, 1)
-    glClear(GL_COLOR_BUFFER_BIT)
+    for p in cell.samplePts:
+      ctx.drawDot(p, color(1.0, 0.9, 0.2), radius = 1.5)
 
-    ctx.viewport = combine(
-      scale(2'f32 / vw, -2'f32 / vh),
-      translate(-1'f32, 1'f32),
-    )
-
-    # grid separators
-    for i in 0..max(nRows, cutParams.len):
-      if i <= cutParams.len:
-        let x = (margin + i.float32 * cellSize).Float
-        ctx.drawSegment(point2(x, margin.Float), point2(x, (margin + gridH).Float), color(0.2, 0.2, 0.2), thickness = 1)
-      if i <= nRows:
-        let y = (margin + i.float32 * cellSize).Float
-        ctx.drawSegment(point2(margin.Float, y), point2((margin + gridW).Float, y), color(0.2, 0.2, 0.2), thickness = 1)
-
-    for (cell, ok) in cells:
-      ctx.drawBoundsRect(cell.cutBounds, color(0.1, 0.45, 0.45), thickness = 1)
-
-      ctx.drawPolyline(cell.origPts, color(0.45, 0.45, 0.45), thickness = 1.5)
-
-      let cutColor = if ok: color(1.0, 0.55, 0.25) else: color(1.0, 0.1, 0.1)
-      ctx.drawPolyline(cell.cutPts, cutColor, thickness = 2.5)
-
-      for p in cell.samplePts:
-        ctx.drawDot(p, color(1.0, 0.9, 0.2), radius = 1.5)
-
-      ctx.drawDot(cell.cutStart, color(0.2, 1.0, 0.4), radius = 3)
-      ctx.drawDot(cell.cutEnd, color(1.0, 0.2, 0.3), radius = 2.5)
-
-
-run win
+    ctx.drawDot(cell.cutStart, color(0.2, 1.0, 0.4), radius = 3)
+    ctx.drawDot(cell.cutEnd, color(1.0, 0.2, 0.3), radius = 2.5)
