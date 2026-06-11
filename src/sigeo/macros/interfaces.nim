@@ -277,8 +277,7 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed]) =
     nnkExprColonExpr.newTree(ident"raises", nnkBracket.newTree()))
   let nimcall = nnkPragma.newTree(ident"nimcall")
 
-  proc mkLambda(fParams: seq[NimNode], retType: NimNode, pragma: NimNode,
-                body: NimNode): NimNode =
+  proc mkLambda(fParams: seq[NimNode], retType: NimNode, pragma: NimNode, body: NimNode): NimNode =
     nnkLambda.newTree(
       newEmptyNode(), newEmptyNode(), newEmptyNode(),
       nnkFormalParams.newTree(@[retType] & fParams),
@@ -432,3 +431,101 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed]) =
         )
       )
     )
+
+    # proc isOf*(this: Xxx, t: typedesc[Impl]): bool
+    result.add nnkProcDef.newTree(
+      nnkPostfix.newTree(
+        ident("*"),
+        ident("isOf")
+      ),
+      newEmptyNode(),
+      newEmptyNode(),
+      nnkFormalParams.newTree(
+        ident("bool"),
+        nnkIdentDefs.newTree(
+          ident("this"),
+          ident(nameStr),
+          newEmptyNode()
+        ),
+        nnkIdentDefs.newTree(
+          ident("t"),
+          nnkBracketExpr.newTree(
+            ident("typedesc"),
+            ident(implStr)
+          ),
+          newEmptyNode()
+        )
+      ),
+      nnkPragma.newTree(
+        newIdentNode("inline")
+      ),
+      newEmptyNode(),
+      nnkStmtList.newTree(
+        nnkInfix.newTree(
+          ident("=="),
+          nnkDotExpr.newTree(
+            nnkDotExpr.newTree(
+              ident("this"),
+              ident("vtable")
+            ),
+            ident("typenameHash")
+          ),
+          nnkStaticExpr.newTree(
+            nnkCall.newTree(
+              bindSym("hash"),
+              nnkPrefix.newTree(
+                ident("$"),
+                ident(implStr)
+              )
+            )
+          )
+        )
+      )
+    )
+
+    # proc castTo*(this: Xxx, t: typedesc[Impl]): var Impl
+    result.add nnkProcDef.newTree(
+      nnkPostfix.newTree(
+        ident("*"),
+        ident("castTo")
+      ),
+      newEmptyNode(),
+      newEmptyNode(),
+      nnkFormalParams.newTree(
+        nnkVarTy.newTree(
+          ident(implStr)
+        ),
+        nnkIdentDefs.newTree(
+          ident("this"),
+          ident(nameStr),
+          newEmptyNode()
+        ),
+        nnkIdentDefs.newTree(
+          ident("t"),
+          nnkBracketExpr.newTree(
+            ident("typedesc"),
+            ident(implStr)
+          ),
+          newEmptyNode()
+        )
+      ),
+      nnkPragma.newTree(
+        newIdentNode("inline")
+      ),
+      newEmptyNode(),
+      nnkStmtList.newTree(
+        nnkBracketExpr.newTree(
+          nnkCast.newTree(
+            nnkPtrTy.newTree(
+              ident(implStr)
+            ),
+            nnkDotExpr.newTree(
+              ident("this"),
+              ident("obj")
+            )
+          )
+        )
+      )
+    )
+
+

@@ -19,8 +19,8 @@ proc `[]`*(bm: Bitmask, i: int): bool {.inline.} =
 
 proc `[]=`*(bm: var Bitmask, i: int, v: bool) {.inline.} =
   assert i >= 0
-  if (i div 8) notin 0..<bm.bytes.len:
-    bm.bytes.setLen(i div 8)
+  if (i div 8) >= bm.bytes.len:
+    bm.bytes.setLen((i div 8) + 1)
   if bm.len < i: bm.len = i
 
   if v:

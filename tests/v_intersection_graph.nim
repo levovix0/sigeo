@@ -19,7 +19,7 @@ const
   tolerance = 1e-6
 
 let app = newVisualTest(
-  title = "sigeo intersection graph — [Space] regenerate",
+  title = "sigeo intersection graph — [Space] regenerate, [D] remove dead ends",
   size = ivec2(winSize, winSize),
   contentCenter = vec2(winSize / 2, winSize / 2),
 )
@@ -72,9 +72,15 @@ proc edgePoints(edgeIdx: int): seq[Point2] =
 
 
 app.onKey proc(e: KeyEvent) =
-  if e.pressed and e.key == Key.space:
-    regenerate()
-    redraw e.window
+  if e.pressed:
+    case e.key
+    of Key.space:
+      regenerate()
+      redraw e.window
+    of Key.d:
+      graph.removeDeadEnds()
+      redraw e.window
+    else: discard
 
 
 randomize()
