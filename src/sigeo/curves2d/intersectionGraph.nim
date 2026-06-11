@@ -1,14 +1,14 @@
 import std/[algorithm, tables, hashes, math]
 import ../core/[vectors, points, bounds]
-import ./[icurve2d, lineSection, circleArc, intersections]
+import ./[icurve2, lineSection, circleArc, intersections]
 
 
 ## Efficient intersection finding for many curves of different kinds, with a given precision.
 ##
 ## The result is represented as a graph:
-##  - nodes are points where curves intersect (or start/end), each node knows all (curve, param)
+##  - verts are points where curves intersect (or start/end), each vert knows all (curve, param)
 ##    pairs that map to its position
-##  - edges are pieces of curves between adjacent nodes, directed in the increasing param direction
+##  - edges are pieces of curves between adjacent verts, directed in the increasing param direction
 
 
 type
@@ -20,18 +20,18 @@ type
     curvePoints*: seq[CurvePoint]
       ## all (curve, param) pairs that map to this position
     edges*: seq[int]
-      ## indexes of edges that start or end at this node
+      ## indexes of edges that start or end at this vert
 
   GraphEdge* = object
-    ## a piece of a curve between two adjacent nodes
+    ## a piece of a curve between two adjacent verts
     ## directed in the increasing param direction (from `startParam` to `endParam`, `startParam < endParam`)
     curve*: int
     startNode*, endNode*: int
     startParam*, endParam*: FloatParam
 
   CurveGraph* = object
-    curves*: seq[OwnedCurve2d]
-    nodes*: seq[GraphNode]
+    curves*: seq[OwnedCurve2]
+    verts*: seq[GraphNode]
     edges*: seq[GraphEdge]
 
   CurveIntersection* = object
@@ -41,7 +41,7 @@ type
 
 
 proc genericIntersectionPointsParams*(
-  curveA, curveB: Curve2d,
+  curveA, curveB: Curve2,
   tolerance: Float = 1e-6,
 ): seq[FloatParam2] =
   ## finds intersection points of two arbitrary curves with the given precision
@@ -121,7 +121,7 @@ const lineSectionTypenameHash = hash("LineSection")
 const circleArcTypenameHash = hash("CircleArc")
 
 proc intersectionPointsParams*(
-  curveA, curveB: Curve2d,
+  curveA, curveB: Curve2,
   tolerance: Float = 1e-6,
 ): seq[FloatParam2] =
   ## finds intersection points of two arbitrary curves with the given precision.
@@ -153,7 +153,7 @@ proc intersectionPointsParams*(
 
 
 proc allIntersections*(
-  curves: openArray[Curve2d],
+  curves: openArray[Curve2],
   tolerance: Float = 1e-6,
 ): seq[CurveIntersection] =
   ## finds all pairwise intersection points of the given curves with the given precision.
@@ -186,30 +186,25 @@ proc allIntersections*(
 
 
 proc buildIntersectionGraph*(
-  curves: sink seq[OwnedCurve2d],
+  curves: sink seq[OwnedCurve2],
   tolerance: Float = 1e-6,
 ): CurveGraph =
   ## finds all intersections between the given curves and builds a graph of them.
-  ## nodes are intersection points and curve endpoints; positions closer than
-  ## `tolerance` are merged into a single node.
-  ## edges are pieces of curves between adjacent nodes (see `GraphEdge`)
+  ## verts are intersection points and curve endpoints; positions closer than `tolerance` are merged into a single vert.
+  ## edges are pieces of curves between adjacent verts (see `GraphEdge`)
   result.curves = curves
   let n = result.curves.len
-
-  var views = newSeq[Curve2d](n)
-  for i in 0..<n:
-    views[i] = result.curves[i].asPtr
 
   # collect params of interest for every curve: endpoints + intersections
   var params = newSeq[seq[Float]](n)
   for i in 0..<n:
     params[i] = @[0.Float, 1.Float]
 
-  for inter in allIntersections(views, tolerance):
+  for inter in allIntersections(result.curves.view, tolerance):
     params[inter.curveA].add inter.params.curveA.Float
     params[inter.curveB].add inter.params.curveB.Float
 
-  # spatial hash for merging nodes closer than tolerance
+  # spatial hash for merging verts closer than tolerance
   let cell = max(tolerance, 1e-12) * 2
   var grid: Table[(int64, int64), seq[int]]
 
@@ -221,16 +216,16 @@ proc buildIntersectionGraph*(
     for dx in -1'i64..1'i64:
       for dy in -1'i64..1'i64:
         for id in grid.getOrDefault((c[0] + dx, c[1] + dy)):
-          if graph.nodes[id].position.distanceTo(p) <= tolerance:
+          if graph.verts[id].position.distanceTo(p) <= tolerance:
             return id
-    result = graph.nodes.len
-    graph.nodes.add GraphNode(position: p)
+    result = graph.verts.len
+    graph.verts.add GraphNode(position: p)
     grid.mgetOrPut(c, @[]).add result
 
   for i in 0..<n:
     sort params[i]
 
-    let paramTol = tolerance / max(views[i].length, tolerance)
+    let paramTol = tolerance / max(result.curves[i].length, tolerance)
 
     # deduplicate params that are closer than tolerance along the curve;
     # clusters containing an endpoint snap to it, others are averaged
@@ -247,11 +242,11 @@ proc buildIntersectionGraph*(
       else: merged.add sum / Float(k - j + 1)
       j = k + 1
 
-    # create nodes and edges
+    # create verts and edges
     var nodeIds = newSeq[int](merged.len)
     for j, t in merged:
-      nodeIds[j] = nodeAt(result, views[i].pointAtParam(t.FloatParam))
-      result.nodes[nodeIds[j]].curvePoints.add (curve: i, param: t.FloatParam)
+      nodeIds[j] = nodeAt(result, result.curves[i].pointAtParam(t.FloatParam))
+      result.verts[nodeIds[j]].curvePoints.add (curve: i, param: t.FloatParam)
 
     for j in 0..<merged.len - 1:
       let e = result.edges.len
@@ -260,27 +255,27 @@ proc buildIntersectionGraph*(
         startNode: nodeIds[j], endNode: nodeIds[j + 1],
         startParam: merged[j].FloatParam, endParam: merged[j + 1].FloatParam,
       )
-      result.nodes[nodeIds[j]].edges.add e
+      result.verts[nodeIds[j]].edges.add e
       if nodeIds[j + 1] != nodeIds[j]:
-        result.nodes[nodeIds[j + 1]].edges.add e
+        result.verts[nodeIds[j + 1]].edges.add e
 
 
-iterator adjacentEdges*(graph: CurveGraph, node: int): tuple[edge: int, forward: bool] =
-  ## yields all edges incident to `node` with their direction
-  ## (forward = true if the edge starts at `node` in the increasing param direction).
-  ## an edge that is a loop (starts and ends at `node`) is yielded twice
-  for e in graph.nodes[node].edges:
-    if graph.edges[e].startNode == node: yield (e, true)
-    if graph.edges[e].endNode == node: yield (e, false)
+iterator adjacentEdges*(graph: CurveGraph, vert: int): tuple[edge: int, forward: bool] =
+  ## yields all edges incident to `vert` with their direction
+  ## (forward = true if the edge starts at `vert` in the increasing param direction).
+  ## an edge that is a loop (starts and ends at `vert`) is yielded twice
+  for e in graph.verts[vert].edges:
+    if graph.edges[e].startNode == vert: yield (e, true)
+    if graph.edges[e].endNode == vert: yield (e, false)
 
 
-proc otherNode*(edge: GraphEdge, node: int): int =
-  ## the node on the other end of the edge
-  if edge.startNode == node: edge.endNode else: edge.startNode
+proc otherNode*(edge: GraphEdge, vert: int): int =
+  ## the vert on the other end of the edge
+  if edge.startNode == vert: edge.endNode else: edge.startNode
 
 
 proc pointOnEdge*(graph: CurveGraph, edge: int, t: FloatParam): Point2 =
-  ## point on the edge's curve piece, t = 0 is the edge's start node, t = 1 is the end node
+  ## point on the edge's curve piece, t = 0 is the edge's start vert, t = 1 is the end vert
   let e = graph.edges[edge]
   graph.curves[e.curve].pointAtParam(
     (e.startParam.Float + t.Float * (e.endParam.Float - e.startParam.Float)).FloatParam
@@ -291,6 +286,7 @@ proc edgeLength*(graph: CurveGraph, edge: int): Float =
   ## approximate length of the curve piece the edge represents
   let e = graph.edges[edge]
   graph.curves[e.curve].length * (e.endParam.Float - e.startParam.Float)
+  # todo: use cut, when it will be eventually part of the Curve2 interface
 
 
 when isMainModule:
@@ -302,7 +298,7 @@ when isMainModule:
   block:
     let a = circleArc(point2(0, 0), 1, 0, 0)
     let b = circleArc(point2(1, 0), 1, 0, 0)
-    let pts = genericIntersectionPointsParams(a.toCurve2d, b.toCurve2d, 1e-9)
+    let pts = genericIntersectionPointsParams(a.toCurve2, b.toCurve2, 1e-9)
     print pts
     for p in pts:
       print a.pointAtParam(p.curveA)  # around (0.5, ±sqrt(3)/2)
@@ -313,7 +309,7 @@ when isMainModule:
   block:
     let line = lineSection(point2(-2, 0.0), point2(2, 0.0))
     let ellipse = ellipseArc(point2(0, 0), v2(3, 1))
-    let pts = genericIntersectionPointsParams(line.toCurve2d, ellipse.toCurve2d, 1e-9)
+    let pts = genericIntersectionPointsParams(line.toCurve2, ellipse.toCurve2, 1e-9)
     print pts
     for p in pts:
       print line.pointAtParam(p.curveA)  # (±1.5, 0)
@@ -324,42 +320,42 @@ when isMainModule:
   block:
     let a = lineSection(point2(0, 0), point2(2, 2))
     let b = lineSection(point2(0, 2), point2(2, 0))
-    print intersectionPointsParams(a.toCurve2d, b.toCurve2d)
+    print intersectionPointsParams(a.toCurve2, b.toCurve2)
 
   print "\n\nintersection graph"
 
   block:
     # a triangle of lines, a circle crossing it, and a far away line
-    var curves: seq[OwnedCurve2d]
-    curves.add lineSection(point2(0, 0), point2(4, 0)).toOwnedCurve2d
-    curves.add lineSection(point2(4, 0), point2(2, 3)).toOwnedCurve2d
-    curves.add lineSection(point2(2, 3), point2(0, 0)).toOwnedCurve2d
-    curves.add circleArc(point2(2, 0), 1).toOwnedCurve2d
-    curves.add lineSection(point2(100, 100), point2(101, 101)).toOwnedCurve2d
+    var curves: seq[OwnedCurve2]
+    curves.add lineSection(point2(0, 0), point2(4, 0)).toOwnedCurve2
+    curves.add lineSection(point2(4, 0), point2(2, 3)).toOwnedCurve2
+    curves.add lineSection(point2(2, 3), point2(0, 0)).toOwnedCurve2
+    curves.add circleArc(point2(2, 0), 1).toOwnedCurve2
+    curves.add lineSection(point2(100, 100), point2(101, 101)).toOwnedCurve2
 
     let graph = buildIntersectionGraph(curves, 1e-9)
 
-    print graph.nodes.len
+    print graph.verts.len
     print graph.edges.len
 
-    for i, node in graph.nodes:
-      print i, node.position, node.curvePoints
+    for i, vert in graph.verts:
+      print i, vert.position, vert.curvePoints
 
     for i, edge in graph.edges:
       print i, edge
 
-    # triangle corners merge endpoint nodes: each corner node has 2 curvePoints
-    var cornerNodes = 0
-    for node in graph.nodes:
-      if node.curvePoints.len >= 2 and node.edges.len >= 2:
-        inc cornerNodes
-    assert cornerNodes >= 3
+    # triangle corners merge endpoint verts: each corner vert has 2 curvePoints
+    var cornerverts = 0
+    for vert in graph.verts:
+      if vert.curvePoints.len >= 2 and vert.edges.len >= 2:
+        inc cornerverts
+    assert cornerverts >= 3
 
     # circle intersects the bottom line twice
     var circleLineIntersections = 0
-    for node in graph.nodes:
+    for vert in graph.verts:
       var hasCircle, hasBottom = false
-      for cp in node.curvePoints:
+      for cp in vert.curvePoints:
         if cp.curve == 3: hasCircle = true
         if cp.curve == 0: hasBottom = true
       if hasCircle and hasBottom: inc circleLineIntersections
@@ -367,9 +363,9 @@ when isMainModule:
 
     # walk the graph: every edge end must be consistent
     for i, edge in graph.edges:
-      assert i in graph.nodes[edge.startNode].edges
-      assert i in graph.nodes[edge.endNode].edges
-      assert graph.pointOnEdge(i, 0.FloatParam).distanceTo(graph.nodes[edge.startNode].position) < 1e-6
-      assert graph.pointOnEdge(i, 1.FloatParam).distanceTo(graph.nodes[edge.endNode].position) < 1e-6
+      assert i in graph.verts[edge.startNode].edges
+      assert i in graph.verts[edge.endNode].edges
+      assert graph.pointOnEdge(i, 0.FloatParam).distanceTo(graph.verts[edge.startNode].position) < 1e-6
+      assert graph.pointOnEdge(i, 1.FloatParam).distanceTo(graph.verts[edge.endNode].position) < 1e-6
 
   echo "ok"

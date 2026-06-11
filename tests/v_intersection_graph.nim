@@ -25,7 +25,7 @@ let app = newVisualTest(
 )
 
 
-proc randomCurves(): seq[OwnedCurve2d] =
+proc randomCurves(): seq[OwnedCurve2] =
   let lo = margin.Float
   let hi = winSize.Float - margin.Float
 
@@ -35,28 +35,28 @@ proc randomCurves(): seq[OwnedCurve2d] =
       let a = point2(rand(lo..hi), rand(lo..hi))
       let angle = rand(0.0..2*Pi)
       let len = rand(120.0..420.0)
-      result.add lineSection(a, a + len * v2(cos(angle), sin(angle))).toOwnedCurve2d
+      result.add lineSection(a, a + len * v2(cos(angle), sin(angle))).toOwnedCurve2
     of 1:
       result.add circleArc(
         point2(rand(lo..hi), rand(lo..hi)),
         rand(50.0..200.0),
         rand(-Pi..Pi), (if rand(1.0) < 0.3: 0.0 else: rand(-Pi..Pi)),
         (if rand(1.0) < 0.5: counterclockwise else: clockwise),
-      ).toOwnedCurve2d
+      ).toOwnedCurve2
     else:
       result.add ellipseArc(
         point2(rand(lo..hi), rand(lo..hi)),
         v2(rand(40.0..180.0), rand(40.0..180.0)),
         rand(-Pi..Pi), (if rand(1.0) < 0.3: 0.0 else: rand(-Pi..Pi)),
         (if rand(1.0) < 0.5: counterclockwise else: clockwise),
-      ).toOwnedCurve2d
+      ).toOwnedCurve2
 
 
 var graph: CurveGraph
 
 proc regenerate() =
   graph = buildIntersectionGraph(randomCurves(), tolerance)
-  echo "curves: ", graph.curves.len, ", nodes: ", graph.nodes.len, ", edges: ", graph.edges.len
+  echo "curves: ", graph.curves.len, ", verts: ", graph.verts.len, ", edges: ", graph.edges.len
 
 
 proc edgeColor(i: int): Color =
@@ -84,17 +84,17 @@ app.run proc(ctx: DrawContext) =
   for i in 0..<graph.edges.len:
     ctx.drawPolyline(edgePoints(i), edgeColor(i), thickness = 1.5)
 
-  for node in graph.nodes:
+  for vert in graph.verts:
     var distinctCurves: seq[int]
     var hasEndpoint = false
-    for cp in node.curvePoints:
+    for cp in vert.curvePoints:
       if cp.curve notin distinctCurves: distinctCurves.add cp.curve
       if cp.param.Float == 0 or cp.param.Float == 1: hasEndpoint = true
     let isIntersection = distinctCurves.len >= 2
 
-    let nodeColor =
+    let vertColor =
       if isIntersection and hasEndpoint: color(1.0, 1.0, 1.0)
       elif isIntersection:               color(1.0, 0.25, 0.3)
       else:                              color(0.2, 1.0, 0.4)
 
-    ctx.drawDot(node.position, nodeColor, radius = (if isIntersection: 3'f32 else: 2'f32))
+    ctx.drawDot(vert.position, vertColor, radius = (if isIntersection: 3'f32 else: 2'f32))

@@ -1,3 +1,4 @@
+import std/[fenv]
 import ./[vectors, points]
 
 
@@ -41,11 +42,11 @@ proc expanded*(box: Bounds2, amount: Float): Bounds2 =
   Bounds2(min: box.min - v2(amount, amount), max: box.max + v2(amount, amount))
 
 
-proc overlaps*(a, b: Bounds2, tolerance: Float = 0): bool =
+proc overlaps*(a, b: Bounds2, tolerance: Float = epsilon(Float)): bool =
   a.min.x <= b.max.x + tolerance and b.min.x <= a.max.x + tolerance and
   a.min.y <= b.max.y + tolerance and b.min.y <= a.max.y + tolerance
 
 
-proc contains*(box: Bounds2, p: Point2, tolerance: Float = 0): bool =
+proc contains*(box: Bounds2, p: Point2, tolerance: Float = epsilon(Float)): bool =
   p.x >= box.min.x - tolerance and p.x <= box.max.x + tolerance and
   p.y >= box.min.y - tolerance and p.y <= box.max.y + tolerance

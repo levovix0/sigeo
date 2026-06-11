@@ -1,6 +1,6 @@
 import ../core/[vectors, points, bounds, buildutils]
 import ../macros/[genAliases]
-import ./[icurve2d]
+import ./[icurve2]
 
 when sigeo_backend == SigeoOpencascade:
   import pkg/opencascade
@@ -120,4 +120,4 @@ when sigeo_backend == SigeoOpencascade:
 
 
 
-Curve2d.implementInterfaceFor(LineSection)
+Curve2.implementInterfaceFor(LineSection)

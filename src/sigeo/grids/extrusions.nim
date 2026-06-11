@@ -2,7 +2,7 @@
 
 import std/[sequtils]
 import ../core/[vectors, points, placement]
-import ../curves2d/icurve2d
+import ../curves2d/icurve2
 
 type
   Sag* = Float
@@ -38,7 +38,7 @@ proc placementAtParam*(curve: Curve3d, t: FloatParam): Placement =
 proc closed*(curve: Curve3d): bool =
   curve.pointAtParam(0) ~== curve.pointAtParam(1)
 
-proc closed*(curve: Curve2d): bool =
+proc closed*(curve: Curve2): bool =
   curve.pointAtParam(0) ~== curve.pointAtParam(1)
 
 
@@ -60,7 +60,7 @@ iterator discretePlacements*(curve: Curve3d, sag: Sag = defaultSag, startPoint =
     t += curve.speedAtParam(t.FloatParam) * sag
   if endPoint: yield curve.placementAtParam(1.FloatParam)
 
-iterator discretePoints*(curve: Curve2d, sag: Sag = defaultSag, startPoint = true, endPoint = true): Point2 =
+iterator discretePoints*(curve: Curve2, sag: Sag = defaultSag, startPoint = true, endPoint = true): Point2 =
   let paramStep = sag / curve.length
   var t = 0.Float
   if not startPoint: t += paramStep
@@ -124,7 +124,7 @@ proc extrusionShellGrid*(
 
 
 proc extrusionShellGrid*(
-  contour: Curve2d,
+  contour: Curve2,
   spine: Curve3d,
   sag: Sag = defaultSag,
 ): Grid3 =

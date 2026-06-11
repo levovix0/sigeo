@@ -1,5 +1,5 @@
 import ../core/[vectors, points, bounds, buildutils]
-import ./icurve2d
+import ./icurve2
 
 when sigeo_backend == SigeoOpencascade:
   import pkg/opencascade
@@ -189,7 +189,7 @@ when sigeo_backend == SigeoOpencascade:
 
 
 
-Curve2d.implementInterfaceFor(EllipseArc)
+Curve2.implementInterfaceFor(EllipseArc)
 
 
 when isMainModule:

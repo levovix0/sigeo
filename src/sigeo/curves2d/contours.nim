@@ -1,6 +1,6 @@
 import ../[core]
 import ../macros/[interfaces]
-import ./[icurve2d, lineSection, circleArc, ellipseArc]
+import ./[icurve2, lineSection, circleArc, ellipseArc]
 
 when sigeo_backend == SigeoOpencascade:
   import pkg/opencascade
@@ -14,7 +14,7 @@ type
 
   Contour* = object
     ## continuous closed loop of curves
-    curves*: seq[OwnedCurve2d]
+    curves*: seq[OwnedCurve2]
     reversed*: Bitmask
 
 
@@ -58,7 +58,7 @@ proc bounds*(this: Contour, a, b: FloatParam): Bounds2 =
 
 
 when sigeo_backend == SigeoOpencascade:
-  proc add(wire: var BRepBuilderAPI_MakeWire, curve: Curve2dConcept) =
+  proc add(wire: var BRepBuilderAPI_MakeWire, curve: Curve2Concept) =
     let curve = curve.toOpencascadeShape
     if curve.shapeType == TopAbs_EDGE:
       wire.add curve.edge
@@ -71,7 +71,7 @@ when sigeo_backend == SigeoOpencascade:
       raise ValueError.newException("unexpected shape")
   
 
-  proc toCurve2d*(shape: TopoDS_Shape): OwnedCurve2d =
+  proc toCurve2*(shape: TopoDS_Shape): OwnedCurve2 =
     let edge = shape.edge
     var first, last: cdouble
     let curve = BRep_Tool_curve(edge, first, last)
@@ -81,7 +81,7 @@ when sigeo_backend == SigeoOpencascade:
       var p1, p2: gp_Pnt
       ent.get[].d0(first, p1)
       ent.get[].d0(last, p2)
-      return lineSection(point2(p1.x, p1.y), point2(p2.x, p2.y)).toOwnedCurve2d
+      return lineSection(point2(p1.x, p1.y), point2(p2.x, p2.y)).toOwnedCurve2
 
     if (let ent = curve.downcast(Geom_Circle); not ent.isNull):
       let circ = ent.get[].circ
@@ -89,7 +89,7 @@ when sigeo_backend == SigeoOpencascade:
       return circleArc(
         point2(center.x, center.y), circ.radius,
         first, last
-      ).toOwnedCurve2d
+      ).toOwnedCurve2
 
     if (let ent = curve.downcast(Geom_Ellipse); not ent.isNull):
       let elips = ent.get[].elips
@@ -98,7 +98,7 @@ when sigeo_backend == SigeoOpencascade:
         point2(center.x, center.y),
         v2(elips.majorRadius * 2, elips.minorRadius * 2),
         first, last
-      ).toOwnedCurve2d
+      ).toOwnedCurve2
 
     raise ValueError.newException("unsupported curve type")
 
@@ -111,7 +111,7 @@ when sigeo_backend == SigeoOpencascade:
     wire.shape
 
 
-Curve2d.implementInterfaceFor(Contour)
+Curve2.implementInterfaceFor(Contour)
 
 
 
@@ -119,7 +119,7 @@ Curve2d.implementInterfaceFor(Contour)
 # todo: boolean operations with a Contour
 
 
-proc outerContour*(curves: openArray[Curve2dConcept]): Contour =
+proc outerContour*(curves: openArray[Curve2Concept]): Contour =
   ## find outer contour
   
   when sigeo_backend == SigeoOpencascade:
@@ -132,7 +132,7 @@ proc outerContour*(curves: openArray[Curve2dConcept]): Contour =
 
     var explorer = bRepTools_WireExplorer(outer)
     while more explorer:
-      result.curves.add toCurve2d explorer.current
+      result.curves.add toCurve2 explorer.current
       next explorer
   
   elif sigeo_backend == SigeoC3d:

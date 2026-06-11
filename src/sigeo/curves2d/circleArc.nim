@@ -1,6 +1,6 @@
 import ../core/[vectors, points, bounds, buildutils]
 import ../macros/[genAliases]
-import ./[icurve2d]
+import ./[icurve2]
 
 when sigeo_backend == SigeoOpencascade:
   import pkg/opencascade except cos, sin
@@ -146,7 +146,7 @@ when sigeo_backend == SigeoOpencascade:
 
 
 
-Curve2d.implementInterfaceFor(CircleArc)
+Curve2.implementInterfaceFor(CircleArc)
 
 
 when isMainModule:
