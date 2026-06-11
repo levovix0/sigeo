@@ -147,6 +147,13 @@ proc cut*(curve: EllipseArc, a, b: FloatParam): EllipseArc =
   )
 
 
+proc invertDir*(curve: EllipseArc): EllipseArc =
+  result = curve
+  result.direction = (if curve.direction == clockwise: counterclockwise else: clockwise)
+
+proc reverse*(curve: EllipseArc): EllipseArc {.inline.} = curve.cut(1, 0)
+
+
 
 proc bounds*(curve: EllipseArc, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the arc between params `a` and `b`

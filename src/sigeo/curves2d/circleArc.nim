@@ -106,6 +106,13 @@ proc cut*(curve: CircleArc, a, b: FloatParam): CircleArc =
   )
 
 
+proc invertDir*(curve: CircleArc): CircleArc =
+  result = curve
+  result.direction = (if curve.direction == clockwise: counterclockwise else: clockwise)
+
+proc reverse*(curve: CircleArc): CircleArc {.inline.} = curve.cut(1, 0)
+
+
 
 proc bounds*(curve: CircleArc, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the arc between params `a` and `b`
@@ -126,6 +133,7 @@ proc bounds*(curve: CircleArc, a, b: FloatParam): Bounds2 =
     let ang = k * (Pi/2)
     result.add curve.center + curve.radius * v2(cos(ang), sin(ang))
     k += 1
+
 
 
 when sigeo_backend == SigeoOpencascade:

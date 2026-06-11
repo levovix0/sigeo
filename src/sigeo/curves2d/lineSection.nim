@@ -102,6 +102,8 @@ proc almostEqual*(lineA, lineB: LineSection): bool {.aliases: [`~==`].} =
 proc cut*(curve: LineSection, a, b: FloatParam): LineSection =
   LineSection(startPoint: curve.pointAtParam(a), endPoint: curve.pointAtParam(b))
 
+proc reverse*(curve: LineSection): LineSection {.inline.} = curve.cut(1, 0)
+
 
 proc bounds*(line: LineSection, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the line section between params `a` and `b`
