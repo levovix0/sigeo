@@ -63,9 +63,8 @@ proc endPoint*(circle: CircleArc): Point2 =
 proc angularLength*(circle: CircleArc): Float =
   ## returns signed angular sweep of the arc in radians, `Pi*2` for full circle
   if circle.fullCircle:
-    case circle.direction
-    of counterclockwise:  2 * Pi
-    of clockwise:        -2 * Pi
+    if (circle.direction == counterclockwise) == sigeo_axisY_up: 2 * Pi
+    else: -2 * Pi
   else:
     let diff = (circle.endAngle - circle.startAngle)
     if (circle.direction == counterclockwise) == sigeo_axisY_up:
@@ -93,15 +92,17 @@ proc paramAtPoint*(circle: CircleArc, point: Point2): FloatParam =
 
 
 proc cut*(curve: CircleArc, a, b: FloatParam): CircleArc =
-  proc toPlusMinusPi(t: Float): Float =
-    result = ((t + Pi/2) mod Pi*2) - Pi/2
-
+  ## returns the part of the arc between params `a` and `b`, such that
+  ## `result.pointAtParam(t) == curve.pointAtParam(a + t * (b - a))`
+  ## if `a > b`, the resulting arc goes backwards along the original arc
+  let angLen = curve.angularLength
+  let sweep = angLen * (b.Float - a.Float)
   CircleArc(
     center: curve.center,
     radius: curve.radius,
-    startAngle: (curve.startAngle + a * curve.angularLength).toPlusMinusPi,
-    endAngle: (curve.startAngle + b * curve.angularLength).toPlusMinusPi,
-    direction: (if (a <= b) == (curve.direction == counterclockwise): counterclockwise else: clockwise),
+    startAngle: normalizeAngle(curve.startAngle + a.Float * angLen),
+    endAngle: normalizeAngle(curve.startAngle + b.Float * angLen),
+    direction: (if (sweep > 0) == sigeo_axisY_up: counterclockwise else: clockwise),
   )
 
 
@@ -149,3 +150,19 @@ when isMainModule:
   print circleArc(point2(0, 0), 1, Pi/2, Pi).paramAtPoint(point2(-1, 1))
   print circleArc(point2(0, 0), 1, Pi/2, Pi).paramAtPoint(point2(1, -1))
   print circleArc(point2(0, 0), 1, Pi/2, Pi).paramAtPoint(point2(-1, -1))
+
+  block:
+    # cut invariant: cut(a, b).pointAtParam(t) == original.pointAtParam(a + t * (b - a))
+    for dir in [counterclockwise, clockwise]:
+      for (sa, ea) in [(0.0, 0.0), (Pi/2, Pi), (Pi, Pi/2), (-3*Pi/4, Pi/4), (3*Pi/4, -3*Pi/4)]:
+        let arc = circleArc(point2(1, 2), 2, sa, ea, dir)
+        for (a, b) in [(0.0, 1.0), (0.25, 0.75), (0.75, 0.25), (0.0, 0.5), (0.9, 0.1), (1.0, 0.0)]:
+          let c = arc.cut(a, b)
+          for t in [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]:
+            let got = c.pointAtParam(t)
+            let expected = arc.pointAtParam(a + t * (b - a))
+            doAssert got.distanceTo(expected) < 1e-9,
+              "cut mismatch: dir=" & $dir & " sa=" & $sa & " ea=" & $ea &
+              " a=" & $a & " b=" & $b & " t=" & $t &
+              " got=" & $got & " expected=" & $expected
+    echo "cut invariant ok"

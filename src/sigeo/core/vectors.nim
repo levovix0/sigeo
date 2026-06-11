@@ -229,6 +229,13 @@ template sureGreater*(a, b: Float, unitsInLastPlace: Natural = 4): bool {.aliase
 
 
 
+proc normalizeAngle*(angle: Float): Float =
+  ## maps an angle in radians to the equivalent angle in (-Pi, Pi]
+  result = angle mod (2 * Pi)
+  if result > Pi: result -= 2 * Pi
+  elif result <= -Pi: result += 2 * Pi
+
+
 proc signedAngleToPlusX*(a: V2): Float {.aliases: [angleToPlusX, angleToX, planarAngle, theta].} =
   ## returns the (signed) angle between a and +X axis in radians
   ## positive if a is counterclockwise from +X, negative otherwise

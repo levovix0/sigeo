@@ -1,13 +1,12 @@
 import std/math
-import pkg/[siwin, pixie]
+import pkg/[siwin, chroma]
 import rice
 import sigeo/[core, curves2d]
+import ./drawutils
 
 
 proc draw(ctx: DrawContext, curve: Curve2d, color: Color = color(1, 1, 1)) =
-  let pts = curve.points()
-  for i in 0 .. pts.high-1:
-    ctx.fillCapsule(color = color, a = pts[i].V2.vec2.vec3(0), b = pts[i + 1].V2.vec2.vec3(0), radius = 0.05)
+  ctx.drawPolyline(curve.points(), color, thickness = 0.1)
 
 
 let win = newOpenglWindow(title = "sigeo contour creation test", size = ivec2(600, 600))

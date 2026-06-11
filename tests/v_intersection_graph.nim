@@ -7,9 +7,10 @@
 ## [Space] — regenerate with new random curves.
 
 import std/[math, random]
-import pkg/[siwin, pixie]
+import pkg/[siwin, chroma]
 import rice
 import sigeo/[core, curves2d]
+import ./drawutils
 
 const
   nCurves   = 60
@@ -66,19 +67,10 @@ proc edgeColor(i: int): Color =
   hsv(hue, 75, value).color
 
 
-proc edgeToPath(edgeIdx: int): Path =
+proc edgePoints(edgeIdx: int): seq[Point2] =
   let nPoints = max(8, int(graph.edgeLength(edgeIdx) / 4))
-  result = newPath()
-  let p0 = graph.pointOnEdge(edgeIdx, 0)
-  result.moveTo(p0.x.float32, p0.y.float32)
-  for i in 1..nPoints:
-    let p = graph.pointOnEdge(edgeIdx, i / nPoints)
-    result.lineTo(p.x.float32, p.y.float32)
-
-  # todo: rice wrongly draws non-closed paths
-  for i in countdown(nPoints - 1, 0):
-    let p = graph.pointOnEdge(edgeIdx, i / nPoints)
-    result.lineTo(p.x.float32, p.y.float32)
+  for i in 0..nPoints:
+    result.add graph.pointOnEdge(edgeIdx, i / nPoints)
 
 
 win.eventsHandler.onResize = proc(e: ResizeEvent) =
@@ -111,10 +103,7 @@ win.eventsHandler.onRender = proc(e: RenderEvent) =
     )
 
     for i in 0..<graph.edges.len:
-      ctx.strokePath(
-        edgeToPath(i), edgeColor(i),
-        strokeWidth = 1.5, lineCap = RoundCap, lineJoin = RoundJoin,
-      )
+      ctx.drawPolyline(edgePoints(i), edgeColor(i), thickness = 1.5)
 
     for node in graph.nodes:
       var distinctCurves: seq[int]
@@ -129,9 +118,7 @@ win.eventsHandler.onRender = proc(e: RenderEvent) =
         elif isIntersection:               color(1.0, 0.25, 0.3)
         else:                              color(0.2, 1.0, 0.4)
 
-      var dot = newPath()
-      dot.circle(node.position.x.float32, node.position.y.float32, if isIntersection: 3'f32 else: 2'f32)
-      ctx.fillPath(dot, nodeColor)
+      ctx.drawDot(node.position, nodeColor, radius = (if isIntersection: 3'f32 else: 2'f32))
 
 
 randomize()

@@ -7,27 +7,47 @@ when sigeo_backend == SigeoOpencascade:
 
 type
   EllipseArc* = object
-    ## a kind of 2d curve — an arc of an axis-aligned ellipse
+    ## a kind of 2d curve — an arc of an arbitrarily rotated ellipse
     center*: Point2
     size*: V2
-      ## full bounding box: width = 2*rx, height = 2*ry
+      ## full extents along the ellipse's own axes: width = 2*rx, height = 2*ry
+      ## (equal to the bounding box when rotation == 0)
     startAngle*, endAngle*: Float
-      ## signed angle from +x to start/end point in radians
+      ## signed parametric angle of start/end point in radians,
+      ## measured in the ellipse's own (rotated) coordinate system
       ## if equal, the ellipse is full
       ## positive is counterclockwise, negative is clockwise
     direction*: AngleDirection
+    rotation*: Float
+      ## signed angle from global +x to the ellipse's own x axis in radians
 
 
 proc ellipseArc*(
   center: Point2, size: V2,
   startAngle: Float = 0, endAngle: Float = 0,
-  direction: AngleDirection = counterclockwise
+  direction: AngleDirection = counterclockwise,
+  rotation: Float = 0,
 ): EllipseArc =
   EllipseArc(
     center: center, size: size,
     startAngle: startAngle, endAngle: endAngle,
-    direction: direction
+    direction: direction,
+    rotation: rotation,
   )
+
+
+proc ellipseArc*(
+  center: Point2, size: V2, xAxis: V2,
+  startAngle: Float = 0, endAngle: Float = 0,
+  direction: AngleDirection = counterclockwise,
+): EllipseArc =
+  ## constructs an ellipse arc with its own x axis pointing along `xAxis`
+  ellipseArc(center, size, startAngle, endAngle, direction, rotation = xAxis.signedAngleToPlusX)
+
+
+proc xAxis*(arc: EllipseArc): V2 =
+  ## direction of the ellipse's own x axis
+  v2(cos(arc.rotation), sin(arc.rotation))
 
 
 proc fullEllipse*(arc: EllipseArc): bool {.inline.} =
@@ -37,9 +57,8 @@ proc fullEllipse*(arc: EllipseArc): bool {.inline.} =
 proc angularLength*(arc: EllipseArc): Float =
   ## returns signed angular sweep of the arc in radians, `Pi*2` for full ellipse
   if arc.fullEllipse:
-    case arc.direction
-    of counterclockwise:  2 * Pi
-    of clockwise:        -2 * Pi
+    if (arc.direction == counterclockwise) == sigeo_axisY_up: 2 * Pi
+    else: -2 * Pi
   else:
     let diff = arc.endAngle - arc.startAngle
     if (arc.direction == counterclockwise) == sigeo_axisY_up:
@@ -105,18 +124,26 @@ proc length*(arc: EllipseArc): Float =
 proc angleAtParam*(curve: EllipseArc, t: FloatParam): Float {.inline.} =
   curve.startAngle + t * curve.angularLength
 
+proc pointAtAngle(curve: EllipseArc, angle: Float): Point2 {.inline.} =
+  curve.center + v2(curve.size.x / 2 * cos(angle), curve.size.y / 2 * sin(angle)).rotate(curve.rotation)
+
 proc pointAtParam*(curve: EllipseArc, t: FloatParam): Point2 =
-  let angle = curve.angleAtParam(t)
-  curve.center + v2(curve.size.x / 2 * cos(angle), curve.size.y / 2 * sin(angle))
+  curve.pointAtAngle(curve.angleAtParam(t))
 
 
 proc cut*(curve: EllipseArc, a, b: FloatParam): EllipseArc =
+  ## returns the part of the arc between params `a` and `b`, such that
+  ## `result.pointAtParam(t) == curve.pointAtParam(a + t * (b - a))`
+  ## if `a > b`, the resulting arc goes backwards along the original arc
+  let angLen = curve.angularLength
+  let sweep = angLen * (b.Float - a.Float)
   EllipseArc(
     center: curve.center,
     size: curve.size,
-    startAngle: curve.angleAtParam(a),
-    endAngle: curve.angleAtParam(b),
-    direction: (if (a <= b) == (curve.direction == counterclockwise): counterclockwise else: clockwise),
+    startAngle: normalizeAngle(curve.startAngle + a.Float * angLen),
+    endAngle: normalizeAngle(curve.startAngle + b.Float * angLen),
+    direction: (if (sweep > 0) == sigeo_axisY_up: counterclockwise else: clockwise),
+    rotation: curve.rotation,
   )
 
 
@@ -128,25 +155,27 @@ proc bounds*(curve: EllipseArc, a, b: FloatParam): Bounds2 =
   let ang0 = curve.angleAtParam(a)
   let ang1 = curve.angleAtParam(b)
 
-  result = bounds2(
-    curve.center + v2(rx * cos(ang0), ry * sin(ang0)),
-    curve.center + v2(rx * cos(ang1), ry * sin(ang1)),
-  )
+  result = bounds2(curve.pointAtAngle(ang0), curve.pointAtAngle(ang1))
 
-  # extreme points of an axis-aligned ellipse are at parametric angles that are multiples of Pi/2
+  # extreme points of a rotated ellipse:
+  # x(θ) = rx·cosθ·cosφ - ry·sinθ·sinφ, dx/dθ = 0 at θ = atan2(-ry·sinφ, rx·cosφ) + kπ
+  # y(θ) = rx·cosθ·sinφ + ry·sinθ·cosφ, dy/dθ = 0 at θ = atan2( ry·cosφ, rx·sinφ) + kπ
   let lo = min(ang0, ang1)
   let hi = max(ang0, ang1)
-  var k = ceil(lo / (Pi/2))
-  while k * (Pi/2) <= hi:
-    let ang = k * (Pi/2)
-    result.add curve.center + v2(rx * cos(ang), ry * sin(ang))
-    k += 1
+  for crit in [
+    arctan2(-ry * sin(curve.rotation), rx * cos(curve.rotation)),
+    arctan2( ry * cos(curve.rotation), rx * sin(curve.rotation)),
+  ]:
+    var k = ceil((lo - crit) / Pi)
+    while crit + k * Pi <= hi:
+      result.add curve.pointAtAngle(crit + k * Pi)
+      k += 1
 
 
 when sigeo_backend == SigeoOpencascade:
   proc toOpencascadeShape*(this: EllipseArc;): TopoDS_Shape =
     bRepBuilderAPI_MakeEdge(
-      gp_Elips(gp_Ax2(gp_Pnt(this.center.x, this.center.y, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0)), this.size.x, this.size.y),
+      gp_Elips(gp_Ax2(gp_Pnt(this.center.x, this.center.y, 0), gp_Dir(0, 0, 1), gp_Dir(cos(this.rotation), sin(this.rotation), 0)), this.size.x, this.size.y),
       (if this.direction == counterclockwise: this.startAngle else: this.endAngle),
       (if this.direction == counterclockwise: this.endAngle else: this.startAngle),
     ).edge
@@ -154,3 +183,46 @@ when sigeo_backend == SigeoOpencascade:
 
 
 Curve2d.implementInterfaceFor(EllipseArc)
+
+
+when isMainModule:
+  block:
+    # rotation: point at parametric angle 0 is at center + rotated x semi-axis
+    let arc = ellipseArc(point2(1, 1), v2(4, 2), rotation = Pi/2)
+    doAssert arc.pointAtParam(0).distanceTo(point2(1, 1) + v2(0, 2)) < 1e-9
+    let arc2 = ellipseArc(point2(0, 0), v2(4, 2), xAxis = v2(0, 3))
+    doAssert arc2.pointAtParam(0).distanceTo(point2(0, 2)) < 1e-9
+  echo "rotation ok"
+
+  block:
+    # cut invariant: cut(a, b).pointAtParam(t) == original.pointAtParam(a + t * (b - a))
+    for dir in [counterclockwise, clockwise]:
+      for rotation in [0.0, Pi/6, -2*Pi/3]:
+        for (sa, ea) in [(0.0, 0.0), (Pi/2, Pi), (Pi, Pi/2), (-3*Pi/4, Pi/4)]:
+          let arc = ellipseArc(point2(1, 2), v2(6, 2), sa, ea, dir, rotation)
+          for (a, b) in [(0.0, 1.0), (0.25, 0.75), (0.75, 0.25), (0.9, 0.1), (1.0, 0.0)]:
+            let c = arc.cut(a, b)
+            for t in [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]:
+              let got = c.pointAtParam(t)
+              let expected = arc.pointAtParam(a + t * (b - a))
+              doAssert got.distanceTo(expected) < 1e-9,
+                "cut mismatch: dir=" & $dir & " rotation=" & $rotation &
+                " sa=" & $sa & " ea=" & $ea & " a=" & $a & " b=" & $b & " t=" & $t
+  echo "cut invariant ok"
+
+  block:
+    # bounds of a rotated arc: contains all sampled points and is tight
+    for rotation in [0.0, Pi/6, -2*Pi/3, Pi/2]:
+      for (sa, ea) in [(0.0, 0.0), (Pi/2, Pi), (-3*Pi/4, Pi/4)]:
+        for (a, b) in [(0.0, 1.0), (0.1, 0.7)]:
+          let arc = ellipseArc(point2(1, 2), v2(6, 2), sa, ea, rotation = rotation)
+          let bb = arc.bounds(a, b)
+          var sampled = bounds2(arc.pointAtParam(a))
+          const n = 2000
+          for i in 0..n:
+            let p = arc.pointAtParam(a + i / n * (b - a))
+            doAssert bb.contains(p, 1e-9), "point outside bounds: rotation=" & $rotation
+            sampled.add p
+          doAssert sampled.min.distanceTo(bb.min) < 1e-3, "bounds not tight"
+          doAssert sampled.max.distanceTo(bb.max) < 1e-3, "bounds not tight"
+  echo "bounds ok"
