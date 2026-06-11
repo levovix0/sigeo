@@ -90,6 +90,7 @@ macro makeInterface*(name: untyped, body: untyped) =
       methods.add(MethodSig(name: methodName, nonThisParams: nonThisParams, retType: retType))
 
   # Xxx / OwnedXxx share the same shape
+  # todo: try to make refcounted RefXxx instead of OwnedXxx and check if it will integrate well with Nim's GC
   proc wrapperType(typName: NimNode): NimNode =
     nnkTypeDef.newTree(
       nnkPostfix.newTree(ident"*", typName),
@@ -111,7 +112,7 @@ macro makeInterface*(name: untyped, body: untyped) =
       nnkObjectTy.newTree(newEmptyNode(), newEmptyNode(), vtableFields)
     ),
     wrapperType(name),
-    wrapperType(ident("Owned" & nameStr))
+    wrapperType(ownedName)
   )
 
   # --- Proc generation ---

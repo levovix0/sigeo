@@ -1,4 +1,4 @@
-import ../core/[vectors, points, buildutils]
+import ../core/[vectors, points, bounds, buildutils]
 import ./icurve2d
 
 when sigeo_backend == SigeoOpencascade:
@@ -119,6 +119,28 @@ proc cut*(curve: EllipseArc, a, b: FloatParam): EllipseArc =
     direction: (if (a <= b) == (curve.direction == counterclockwise): counterclockwise else: clockwise),
   )
 
+
+
+proc bounds*(curve: EllipseArc, a, b: FloatParam): Bounds2 =
+  ## bounding box of the part of the arc between params `a` and `b`
+  let rx = curve.size.x / 2
+  let ry = curve.size.y / 2
+  let ang0 = curve.angleAtParam(a)
+  let ang1 = curve.angleAtParam(b)
+
+  result = bounds2(
+    curve.center + v2(rx * cos(ang0), ry * sin(ang0)),
+    curve.center + v2(rx * cos(ang1), ry * sin(ang1)),
+  )
+
+  # extreme points of an axis-aligned ellipse are at parametric angles that are multiples of Pi/2
+  let lo = min(ang0, ang1)
+  let hi = max(ang0, ang1)
+  var k = ceil(lo / (Pi/2))
+  while k * (Pi/2) <= hi:
+    let ang = k * (Pi/2)
+    result.add curve.center + v2(rx * cos(ang), ry * sin(ang))
+    k += 1
 
 
 when sigeo_backend == SigeoOpencascade:

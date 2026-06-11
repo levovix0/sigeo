@@ -1,4 +1,4 @@
-import ../core/[vectors, points, buildutils]
+import ../core/[vectors, points, bounds, buildutils]
 import ../macros/[genAliases]
 import ./[icurve2d]
 
@@ -101,6 +101,11 @@ proc almostEqual*(lineA, lineB: LineSection): bool {.aliases: [`~==`].} =
 
 proc cut*(curve: LineSection, a, b: FloatParam): LineSection =
   LineSection(startPoint: curve.pointAtParam(a), endPoint: curve.pointAtParam(b))
+
+
+proc bounds*(line: LineSection, a, b: FloatParam): Bounds2 =
+  ## bounding box of the part of the line section between params `a` and `b`
+  bounds2(line.pointAtParam(a), line.pointAtParam(b))
 
 
 

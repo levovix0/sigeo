@@ -39,6 +39,24 @@ proc pointAtParam*(this: Contour; param: FloatParam): Point2 =
   this.pointAtCurve(t.int, t mod 1)
 
 
+proc bounds*(this: Contour, a, b: FloatParam): Bounds2 =
+  ## bounding box of the part of the contour between params `a` and `b`
+  assert this.curves.len != 0, "empty contour"
+  let n = this.curves.len
+  let ta = a.Float * n.Float
+  let tb = b.Float * n.Float
+  let i0 = clamp(int(floor(ta)), 0, n - 1)
+  let i1 = clamp(int(ceil(tb)) - 1, i0, n - 1)
+
+  result = bounds2(this.pointAtCurve(i0, clamp(ta - i0.Float, 0, 1)))
+  for i in i0..i1:
+    var la = clamp(ta - i.Float, 0, 1)
+    var lb = clamp(tb - i.Float, 0, 1)
+    if this.reversed[i]:
+      (la, lb) = (1 - lb, 1 - la)
+    result.add this.curves[i].bounds(la.FloatParam, lb.FloatParam)
+
+
 when sigeo_backend == SigeoOpencascade:
   proc add(wire: var BRepBuilderAPI_MakeWire, curve: Curve2dConcept) =
     let curve = curve.toOpencascadeShape

@@ -1,4 +1,4 @@
-import ../core/[vectors, points, buildutils]
+import ../core/[vectors, points, bounds, buildutils]
 import ../macros/[genAliases]
 import ./[icurve2d]
 
@@ -78,12 +78,9 @@ proc length*(circle: CircleArc): Float {.inline.} =
   abs(circle.angularLength) * circle.radius
 
 
-proc angleAtParam*(curve: CircleArc, t: FloatParam): Float {.inline.} =
-  curve.startAngle + t * curve.angularLength
-
-proc pointAtParam*(circle: CircleArc, t: FloatParam): Point2 =
-  let angle = circle.angleAtParam(t)
-  circle.center + circle.radius * v2(cos(angle), sin(angle))
+proc pointAtParam*(curve: CircleArc, t: FloatParam): Point2 =
+  let angle = curve.startAngle + t * curve.angularLength
+  curve.center + curve.radius * v2(cos(angle), sin(angle))
 
 
 proc paramAtPoint*(circle: CircleArc, point: Point2): FloatParam =
@@ -96,14 +93,38 @@ proc paramAtPoint*(circle: CircleArc, point: Point2): FloatParam =
 
 
 proc cut*(curve: CircleArc, a, b: FloatParam): CircleArc =
+  proc toPlusMinusPi(t: Float): Float =
+    result = ((t + Pi/2) mod Pi*2) - Pi/2
+
   CircleArc(
     center: curve.center,
     radius: curve.radius,
-    startAngle: curve.angleAtParam(a),
-    endAngle: curve.angleAtParam(b),
+    startAngle: (curve.startAngle + a * curve.angularLength).toPlusMinusPi,
+    endAngle: (curve.startAngle + b * curve.angularLength).toPlusMinusPi,
     direction: (if (a <= b) == (curve.direction == counterclockwise): counterclockwise else: clockwise),
   )
 
+
+
+proc bounds*(curve: CircleArc, a, b: FloatParam): Bounds2 =
+  ## bounding box of the part of the arc between params `a` and `b`
+  let angLen = curve.angularLength
+  let ang0 = curve.startAngle + a.Float * angLen
+  let ang1 = curve.startAngle + b.Float * angLen
+
+  result = bounds2(
+    curve.center + curve.radius * v2(cos(ang0), sin(ang0)),
+    curve.center + curve.radius * v2(cos(ang1), sin(ang1)),
+  )
+
+  # extreme points of a circle are at angles that are multiples of Pi/2
+  let lo = min(ang0, ang1)
+  let hi = max(ang0, ang1)
+  var k = ceil(lo / (Pi/2))
+  while k * (Pi/2) <= hi:
+    let ang = k * (Pi/2)
+    result.add curve.center + curve.radius * v2(cos(ang), sin(ang))
+    k += 1
 
 
 when sigeo_backend == SigeoOpencascade:
