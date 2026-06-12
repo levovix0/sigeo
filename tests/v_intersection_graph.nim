@@ -53,7 +53,7 @@ proc randomCurves(): seq[OwnedCurve2] =
 
 
 var graph: CurveGraph
-var contours: seq[Contour2]
+var contours: seq[Path2]
 
 proc regenerate() =
   graph = buildIntersectionGraph(randomCurves(), tolerance)

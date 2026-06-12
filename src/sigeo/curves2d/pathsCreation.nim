@@ -1,12 +1,12 @@
 import std/[math, algorithm, tables]
 import ../[core]
-import ./[icurve2, contours, intersectionGraph]
+import ./[icurve2, paths, intersectionGraph]
 
 
-## Finding closed contours in a curve intersection graph.
+## Finding closed paths in a curve intersection graph.
 ##
 ## Parts of the graph that touch only at a single point, or are connected only by a single
-## chain of edges, form separate contours. Such parts are exactly the non-trivial biconnected
+## chain of edges, form separate paths. Such parts are exactly the non-trivial biconnected
 ## components of the graph: bridges and dead ends form trivial (single-edge) components,
 ## which can't be part of any loop and are dropped.
 ##
@@ -154,7 +154,7 @@ proc approxFaceArea(graph: CurveGraph, face: seq[int], samples = 32): Float =
   result /= 2
 
 
-proc toContour(graph: CurveGraph, face: seq[int]): Contour2 =
+proc toContour(graph: CurveGraph, face: seq[int]): Path2 =
   ## cuts out the curve pieces the face passes through, in traversal direction
   for he in face:
     let edge = graph.edges[he shr 1]
@@ -178,7 +178,7 @@ proc componentFaces(graph: CurveGraph): seq[tuple[faces: seq[seq[int]], outer: i
     result.add (fs, outer)
 
 
-proc outerContours*(graph: CurveGraph): seq[Contour2] =
+proc outerContours*(graph: CurveGraph): seq[Path2] =
   ## finds the biggest closed loop of every independent part of the graph.
   ## parts that touch at a single point, or are connected only by a single chain
   ## of edges, are independent; bridges and dead ends are not part of any contour.
@@ -190,7 +190,7 @@ proc outerContours*(graph: CurveGraph): seq[Contour2] =
     result.add graph.toContour(f)
 
 
-proc innerContours*(graph: CurveGraph): seq[Contour2] =
+proc innerContours*(graph: CurveGraph): seq[Path2] =
   ## finds all smallest closed loops of the graph — the faces of its planar subdivision,
   ## not counting the outer face of every independent part (see `outerContours`).
   ## returned contours are counterclockwise (positive signed area)
@@ -206,7 +206,9 @@ when isMainModule:
   import print
   import ./[lineSection, circleArc]
 
-  proc isClosed(c: Contour2): bool =
+  # todo: use std/unittest in module tests
+
+  proc isClosed(c: Path2): bool =
     if c.curves.len == 0: return false
     for i in 0..<c.curves.len:
       let prev = c.pointAtCurve(i, 1)
@@ -230,7 +232,7 @@ when isMainModule:
     print outer.len
     assert outer.len == 1
     assert outer[0].curves.len == 4
-    assert outer[0].isClosed
+    assert outer[0].isClosed and outer[0].isContinuous
     assert abs(outer[0].approxSignedArea - 4) < 1e-6
 
     let inner = graph.innerContours
@@ -238,7 +240,7 @@ when isMainModule:
     assert inner.len == 2
     for c in inner:
       assert c.curves.len == 3
-      assert c.isClosed
+      assert c.isClosed and c.isContinuous
       assert abs(c.approxSignedArea - 2) < 1e-6
 
   print "\n\n--- separated parts: shared vert, bridge, dead end, isolated curve, standalone circle ---"
@@ -271,7 +273,7 @@ when isMainModule:
 
     var triangles, circles = 0
     for c in outer:
-      assert c.isClosed
+      assert c.isClosed and c.isContinuous
       assert c.approxSignedArea > 0
       if abs(c.approxSignedArea - 6) < 1e-6: inc triangles      # triangle area
       if abs(c.approxSignedArea - Pi) < 0.05: inc circles       # circle area (polyline approximation)
@@ -303,7 +305,7 @@ when isMainModule:
     assert inner.len == 2
 
     for c in outer & inner:
-      assert c.isClosed
+      assert c.isClosed and c.isContinuous
       assert c.approxSignedArea > 0
 
   echo "ok"

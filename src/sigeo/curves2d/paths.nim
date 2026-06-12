@@ -11,33 +11,33 @@ when sigeo_backend == SigeoC3d:
 
 
 type
-  Contour2* = object
-    ## continuous closed loop of curves
+  Path2* = object
+    ## continuous sequence of curves
     curves*: seq[OwnedCurve2]
     reversed*: Bitmask
 
 
-Curve2.implementInterfaceFor(Contour2, fwd = Declare)
+Curve2.implementInterfaceFor(Path2, fwd = Declare)
 
 
-proc length*(this: Contour2): float =
+proc length*(this: Path2): float =
   result = 0
   for x in this.curves:
     result += x.length
 
 
-proc `[]`*(this: Contour2, i: int|BackwardsIndex): Curve2 {.inline.} =
+proc `[]`*(this: Path2, i: int|BackwardsIndex): Curve2 {.inline.} =
   this.curves.view[i]  # todo: without `.view` it tries to copy OwnedCurve
 
 
-proc pointAtCurve*(this: Contour2, curve: int|BackwardsIndex, param: FloatParam): Point2 {.inline.} =
+proc pointAtCurve*(this: Path2, curve: int|BackwardsIndex, param: FloatParam): Point2 {.inline.} =
   if this.reversed[curve]:
     this[curve].pointAtParam(1 - param)
   else:
     this[curve].pointAtParam(param)
 
 
-proc pointAtParam*(this: Contour2; param: FloatParam): Point2 =
+proc pointAtParam*(this: Path2; param: FloatParam): Point2 =
   assert this.curves.len != 0, "empty contour"
   if classify(param) != fcNormal: return this.pointAtCurve(0, 0)
   if param <= 0: return this.pointAtCurve(0, 0)
@@ -46,14 +46,26 @@ proc pointAtParam*(this: Contour2; param: FloatParam): Point2 =
   this.pointAtCurve(t.int, t mod 1)
 
 
-proc derAtCurve*(this: Contour2, curve: int|BackwardsIndex, param: FloatParam): V2 {.inline.} =
+proc isContinuous*(c: Path2): bool =
+  if c.curves.len <= 1: return true
+  for i in 0 ..< c.curves.len-1:
+    let prev = c.pointAtCurve(i, 1)
+    let next = c.pointAtCurve(i + 1, 0)
+    if prev ~!= next: return false
+  true
+
+proc isClosed*(c: Path2): bool =
+  return c.pointAtParam(0) ~== c.pointAtParam(1)
+
+
+proc derAtCurve*(this: Path2, curve: int|BackwardsIndex, param: FloatParam): V2 {.inline.} =
   if this.reversed[curve]:
     -this[curve].derAtParam(1 - param)
   else:
     this[curve].derAtParam(param)
 
 
-proc derAtParam*(this: Contour2; param: FloatParam): V2 =
+proc derAtParam*(this: Path2; param: FloatParam): V2 =
   ## derivative of `pointAtParam` with respect to the contour param
   assert this.curves.len != 0, "empty contour"
   let n = this.curves.len.Float
@@ -64,7 +76,7 @@ proc derAtParam*(this: Contour2; param: FloatParam): V2 =
   this.derAtCurve(t.int, t mod 1) * n
 
 
-proc approxSignedArea*(this: Contour2, samplesPerCurve = 32): Float =
+proc approxSignedArea*(this: Path2, samplesPerCurve = 32): Float =
   ## approximate signed area enclosed by the contour, computed from a polyline approximation.
   ## positive if the contour is counterclockwise in coordinate space
   for i in 0..<this.curves.len:
@@ -76,7 +88,7 @@ proc approxSignedArea*(this: Contour2, samplesPerCurve = 32): Float =
   result /= 2
 
 
-proc bounds*(this: Contour2, a, b: FloatParam): Bounds2 =
+proc bounds*(this: Path2, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the contour between params `a` and `b`
   assert this.curves.len != 0, "empty contour"
   let n = this.curves.len
@@ -94,20 +106,20 @@ proc bounds*(this: Contour2, a, b: FloatParam): Bounds2 =
     result.add this[i].bounds(la.FloatParam, lb.FloatParam)
 
 
-proc cut*(this: Contour2, a, b: FloatParam): OwnedCurve2 =
+proc cut*(this: Path2, a, b: FloatParam): OwnedCurve2 =
   if this.curves.len == 0: return
 
   let n = this.curves.len
   let ta = a.Float.clamp(0, 1) * n.Float
   let tb = b.Float.clamp(0, 1) * n.Float
 
-  proc localParam(this: Contour2, t: Float): FloatParam =
+  proc localParam(this: Path2, t: Float): FloatParam =
     if this.reversed[t.int]: (1 - (t - t.floor)).FloatParam else: (t - t.floor).FloatParam
 
   if ta.int == tb.int:
     return this[ta.int].cut(this.localParam(ta), this.localParam(tb))
   elif ta < tb:
-    var res: Contour2
+    var res: Path2
     for i in countup(ta.int, tb.int):
       res.curves.add this[i].cut(
         this.localParam(ta.clamp(i.Float, (i + 1).float)),
@@ -115,7 +127,7 @@ proc cut*(this: Contour2, a, b: FloatParam): OwnedCurve2 =
       )
     return res.toOwnedCurve2
   else:
-    var res: Contour2
+    var res: Path2
     for i in countdown(ta.int, tb.int):
       res.curves.add this[i].cut(
         this.localParam(ta.clamp(i.Float, (i + 1).float)),
@@ -171,18 +183,18 @@ when sigeo_backend == SigeoOpencascade:
 
 
 
-  proc toOpencascadeShape*(this: Contour2;): TopoDS_Shape =
+  proc toOpencascadeShape*(this: Path2;): TopoDS_Shape =
     var wire: BRepBuilderAPI_MakeWire
     for curve in this.curves.view:
       wire.add curve
     wire.shape
 
 
-Curve2.implementInterfaceFor(Contour2, fwd = Implement)
+Curve2.implementInterfaceFor(Path2, fwd = Implement)
 
 
 
-# todo: boolean operations with a Contour2
+# todo: boolean operations with a Path2
 
 
 when isMainModule:
@@ -216,7 +228,7 @@ when isMainModule:
 
   block:
     # a triangle with the second side stored reversed
-    var contour = Contour2(curves: @[
+    var contour = Path2(curves: @[
       lineSection(point2(0, 0), point2(2, 0)).toOwnedCurve2,
       lineSection(point2(2, 2), point2(2, 0)).toOwnedCurve2,
       lineSection(point2(2, 2), point2(0, 0)).toOwnedCurve2,
@@ -236,13 +248,13 @@ when isMainModule:
       assert piece.pointAtParam(0).distanceTo(contour.pointAtParam(a.FloatParam)) < 1e-9
       assert piece.pointAtParam(1).distanceTo(contour.pointAtParam(b.FloatParam)) < 1e-9
       # pieces stay continuous
-      assert piece.isOf(Contour2)
-      for i in 0..<piece.castTo(Contour2).curves.len - 1:
-        assert piece.castTo(Contour2).pointAtCurve(i, 1).distanceTo(piece.castTo(Contour2).pointAtCurve(i + 1, 0)) < 1e-9
+      assert piece.isOf(Path2)
+      for i in 0..<piece.castTo(Path2).curves.len - 1:
+        assert piece.castTo(Path2).pointAtCurve(i, 1).distanceTo(piece.castTo(Path2).pointAtCurve(i + 1, 0)) < 1e-9
 
     # a contour is itself a Curve2, so it can be cut through the interface
     let owned = contour.toCurve2.cut(0.2.FloatParam, 0.9.FloatParam)
-    assert owned.isOf(Contour2)
+    assert owned.isOf(Path2)
     assert owned.pointAtParam(0).distanceTo(contour.pointAtParam(0.2.FloatParam)) < 1e-9
 
   echo "ok"
