@@ -53,14 +53,16 @@ proc randomCurves(): seq[OwnedCurve2] =
 
 
 var graph: CurveGraph
+var contours: seq[Contour]
 
 proc regenerate() =
   graph = buildIntersectionGraph(randomCurves(), tolerance)
+  contours = outerContours(graph)
   echo "curves: ", graph.curves.len, ", verts: ", graph.verts.len, ", edges: ", graph.edges.len
 
 
 proc edgeColor(i: int): Color =
-  let hue = (i.float * 360 * 1234567/7654) mod 360.0
+  let hue = (i.float * 360 * (Pi mod 1)) mod 360.0
   let value = 75 + 25 * ((i.float * 0.35) mod 1.0)
   hsv(hue, 75, value).color
 
@@ -87,6 +89,9 @@ randomize()
 regenerate()
 
 app.run proc(ctx: DrawContext) =
+  for contour in contours:
+    ctx.drawPolyline(contour.points(int(contour.length / 4)), color(1, 1, 1), thickness = 5)
+
   for i in 0..<graph.edges.len:
     ctx.drawPolyline(edgePoints(i), edgeColor(i), thickness = 1.5)
 

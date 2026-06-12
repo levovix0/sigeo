@@ -1,8 +1,9 @@
 import ../[core]
 import ../macros/[interfaces]
-import ./[icurve2, lineSection, circleArc, ellipseArc]
+import ./[icurve2]
 
 when sigeo_backend == SigeoOpencascade:
+  import ./[lineSection, circleArc, ellipseArc]
   import pkg/opencascade
 
 when sigeo_backend == SigeoC3d:
@@ -10,8 +11,6 @@ when sigeo_backend == SigeoC3d:
 
 
 type
-  # todo: ContourGraph
-
   Contour* = object
     ## continuous closed loop of curves
     curves*: seq[OwnedCurve2]
@@ -24,19 +23,36 @@ proc length*(this: Contour): float =
     result += x.length
 
 
+proc `[]`*(this: Contour, i: int|BackwardsIndex): Curve2 {.inline.} =
+  this.curves.view[i]  # todo: without `.view` it tries to copy OwnedCurve
+
+
 proc pointAtCurve*(this: Contour, curve: int|BackwardsIndex, param: FloatParam): Point2 {.inline.} =
   if this.reversed[curve]:
-    this.curves[curve].pointAtParam(1 - param)
+    this[curve].pointAtParam(1 - param)
   else:
-    this.curves[curve].pointAtParam(param)
+    this[curve].pointAtParam(param)
 
 
 proc pointAtParam*(this: Contour; param: FloatParam): Point2 =
   assert this.curves.len != 0, "empty contour"
+  if classify(param) != fcNormal: return this.pointAtCurve(0, 0)
   if param <= 0: return this.pointAtCurve(0, 0)
   if param >= 1: return this.pointAtCurve(^1, 1)
   let t = param.Float * this.curves.len.Float
   this.pointAtCurve(t.int, t mod 1)
+
+
+proc approxSignedArea*(this: Contour, samplesPerCurve = 32): Float =
+  ## approximate signed area enclosed by the contour, computed from a polyline approximation.
+  ## positive if the contour is counterclockwise in coordinate space
+  for i in 0..<this.curves.len:
+    var prev = this.pointAtCurve(i, 0)
+    for j in 1..samplesPerCurve:
+      let p = this.pointAtCurve(i, FloatParam(j / samplesPerCurve))
+      result += prev.x * p.y - p.x * prev.y
+      prev = p
+  result /= 2
 
 
 proc bounds*(this: Contour, a, b: FloatParam): Bounds2 =
@@ -54,7 +70,7 @@ proc bounds*(this: Contour, a, b: FloatParam): Bounds2 =
     var lb = clamp(tb - i.Float, 0, 1)
     if this.reversed[i]:
       (la, lb) = (1 - lb, 1 - la)
-    result.add this.curves[i].bounds(la.FloatParam, lb.FloatParam)
+    result.add this[i].bounds(la.FloatParam, lb.FloatParam)
 
 
 when sigeo_backend == SigeoOpencascade:
@@ -106,7 +122,7 @@ when sigeo_backend == SigeoOpencascade:
 
   proc toOpencascadeShape*(this: Contour;): TopoDS_Shape =
     var wire: BRepBuilderAPI_MakeWire
-    for curve in this.curves:
+    for curve in this.curves.view:
       wire.add curve
     wire.shape
 
@@ -115,30 +131,6 @@ Curve2.implementInterfaceFor(Contour)
 
 
 
-# todo: finding area of a Contour
 # todo: boolean operations with a Contour
-
-
-proc outerContour*(curves: openArray[Curve2Concept]): Contour =
-  ## find outer contour
-  
-  when sigeo_backend == SigeoOpencascade:
-    # todo: this does not work!
-    var wire: BRepBuilderAPI_MakeWire
-    for curve in curves:
-      wire.add curve
-    
-    let outer = bRepBuilderAPI_MakeFace(gp_Pln(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1)), wire.wire).face.BRepTools_outerWire
-
-    var explorer = bRepTools_WireExplorer(outer)
-    while more explorer:
-      result.curves.add toCurve2 explorer.current
-      next explorer
-  
-  elif sigeo_backend == SigeoC3d:
-    assert false, "not implemented"
-  
-  else:
-    assert false, "not implemented"
 
 

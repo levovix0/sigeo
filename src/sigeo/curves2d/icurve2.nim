@@ -35,7 +35,7 @@ proc points*(arc: Curve2, count: int = 32): seq[Point2] =
     result.add arc.pointAtParam(i / count)
 
 
-proc view*(curves: var seq[OwnedCurve2]): var seq[Curve2] =
+proc view*(curves {.byref.}: seq[OwnedCurve2]): lent seq[Curve2] =
   ## yep, this is totaly safe, Curve2 is guarantied to have same binary representation as OwnedCurve2
   cast[ptr seq[Curve2]](curves.addr)[]
 
