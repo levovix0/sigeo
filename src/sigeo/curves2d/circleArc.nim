@@ -82,6 +82,12 @@ proc pointAtParam*(curve: CircleArc, t: FloatParam): Point2 =
   curve.center + curve.radius * v2(cos(angle), sin(angle))
 
 
+proc derAtParam*(curve: CircleArc, t: FloatParam): V2 =
+  let angLen = curve.angularLength
+  let angle = curve.startAngle + t * angLen
+  curve.radius * angLen * v2(-sin(angle), cos(angle))
+
+
 proc paramAtPoint*(circle: CircleArc, point: Point2): FloatParam =
   ## returns arbitrary number `t` such that circle.pointAtParam(`t`) returns `point`
   ## assumes that `point` is on circle arc

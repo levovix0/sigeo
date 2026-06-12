@@ -11,7 +11,9 @@ when sigeo_backend == SigeoOpencascade:
   makeInterface Curve2:
     proc length(this;): Float
     proc pointAtParam(this; param: FloatParam): Point2
+    proc derAtParam(this; param: FloatParam): V2
     proc bounds(this; a: FloatParam, b: FloatParam): Bounds2
+    proc cut(this; a: FloatParam, b: FloatParam): OwnedCurve2
     proc toOpencascadeShape(this;): TopoDS_Shape
 
 
@@ -19,10 +21,9 @@ else:
   makeInterface Curve2:
     proc length(this;): Float
     proc pointAtParam(this; param: FloatParam): Point2
+    proc derAtParam(this; param: FloatParam): V2
     proc bounds(this; a: FloatParam, b: FloatParam): Bounds2
-
-    # todo: this gives an error:
-    # proc cut(this; a: FloatParam, b: FloatParam): OwnedCurve2
+    proc cut(this; a: FloatParam, b: FloatParam): OwnedCurve2
 
 
 proc bounds*(curve: Curve2): Bounds2 =

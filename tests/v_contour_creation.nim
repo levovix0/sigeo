@@ -23,9 +23,10 @@ app.run proc(ctx: DrawContext) =
     lineSection(p2(2, 2), p2(2, 0)).toOwnedCurve2,
     lineSection(p2(0, 1), p2(0, 0)).toOwnedCurve2,
 
+    # todo: any combination of 2 or 3 or this lines messes up with outerContours
     lineSection(p2(0, 0), p2(1, 1)).toOwnedCurve2,
-    lineSection(p2(2, 0), p2(1, 1)).toOwnedCurve2,
-    lineSection(p2(1, 2), p2(1, 1)).toOwnedCurve2,
+    # lineSection(p2(2, 0), p2(1, 1)).toOwnedCurve2,
+    # lineSection(p2(1, 2), p2(1, 1)).toOwnedCurve2,
 
     lineSection(p2(1, 2), p2(2, 2)).toOwnedCurve2,
     lineSection(p2(0, 0), p2(0, 1)).toOwnedCurve2,
@@ -35,6 +36,6 @@ app.run proc(ctx: DrawContext) =
   for curve in curves:
     ctx.draw curve
 
-  let contour = outerContour(curves)
-  for x in contour.curves:
-    ctx.draw x, color(1, 0.4, 0.4)
+  for contour in outerContours(curves.buildIntersectionGraph):
+    for x in contour.curves:
+      ctx.draw x, color(1, 0.4, 0.4)

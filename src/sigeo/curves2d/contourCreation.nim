@@ -1,6 +1,6 @@
 import std/[math, algorithm, tables]
 import ../[core]
-import ./[icurve2, lineSection, circleArc, ellipseArc, contours, intersectionGraph]
+import ./[icurve2, contours, intersectionGraph]
 
 
 ## Finding closed contours in a curve intersection graph.
@@ -29,8 +29,15 @@ proc targetVert(graph: CurveGraph, he: int): int =
 
 proc departureAngle(graph: CurveGraph, he: int): Float =
   ## angle of the direction in which the half-edge leaves its source vert
+  let edge = graph.edges[he shr 1]
+  let der =
+    if (he and 1) == 0: graph.curves[edge.curve].derAtParam(edge.startParam)
+    else: -graph.curves[edge.curve].derAtParam(edge.endParam)
+  if der.length > 1e-12: return der.signedAngleToPlusX
+
+  # degenerate derivative, fall back to sampling
   let base = graph.verts[graph.sourceVert(he)].position
-  for eps in [1e-6, 1e-4, 1e-2, 0.1, 0.5]:
+  for eps in [1e-4, 1e-2, 0.1, 0.5]:
     let t = if (he and 1) == 0: eps else: 1 - eps
     let d = graph.pointOnEdge(he shr 1, t.FloatParam) - base
     if d.length > 1e-12: return d.signedAngleToPlusX
@@ -147,22 +154,14 @@ proc approxFaceArea(graph: CurveGraph, face: seq[int], samples = 32): Float =
   result /= 2
 
 
-proc cutOwned(curve: Curve2, a, b: FloatParam): OwnedCurve2 =
-  ## todo: move to interface
-  if curve.isOf(LineSection): curve.castTo(LineSection).cut(a, b).toOwnedCurve2
-  elif curve.isOf(CircleArc): curve.castTo(CircleArc).cut(a, b).toOwnedCurve2
-  elif curve.isOf(EllipseArc): curve.castTo(EllipseArc).cut(a, b).toOwnedCurve2
-  else: raise ValueError.newException("cutting this curve type is not supported")
-
-
-proc toContour(graph: CurveGraph, face: seq[int]): Contour =
+proc toContour(graph: CurveGraph, face: seq[int]): Contour2 =
   ## cuts out the curve pieces the face passes through, in traversal direction
   for he in face:
     let edge = graph.edges[he shr 1]
     if (he and 1) == 0:
-      result.curves.add cutOwned(graph.curves[edge.curve], edge.startParam, edge.endParam)
+      result.curves.add graph.curves[edge.curve].cut(edge.startParam, edge.endParam)
     else:
-      result.curves.add cutOwned(graph.curves[edge.curve], edge.endParam, edge.startParam)
+      result.curves.add graph.curves[edge.curve].cut(edge.endParam, edge.startParam)
 
 
 proc componentFaces(graph: CurveGraph): seq[tuple[faces: seq[seq[int]], outer: int]] =
@@ -179,7 +178,7 @@ proc componentFaces(graph: CurveGraph): seq[tuple[faces: seq[seq[int]], outer: i
     result.add (fs, outer)
 
 
-proc outerContours*(graph: CurveGraph): seq[Contour] =
+proc outerContours*(graph: CurveGraph): seq[Contour2] =
   ## finds the biggest closed loop of every independent part of the graph.
   ## parts that touch at a single point, or are connected only by a single chain
   ## of edges, are independent; bridges and dead ends are not part of any contour.
@@ -191,7 +190,7 @@ proc outerContours*(graph: CurveGraph): seq[Contour] =
     result.add graph.toContour(f)
 
 
-proc innerContours*(graph: CurveGraph): seq[Contour] =
+proc innerContours*(graph: CurveGraph): seq[Contour2] =
   ## finds all smallest closed loops of the graph — the faces of its planar subdivision,
   ## not counting the outer face of every independent part (see `outerContours`).
   ## returned contours are counterclockwise (positive signed area)
@@ -205,8 +204,9 @@ proc innerContours*(graph: CurveGraph): seq[Contour] =
 
 when isMainModule:
   import print
+  import ./[lineSection, circleArc]
 
-  proc isClosed(c: Contour): bool =
+  proc isClosed(c: Contour2): bool =
     if c.curves.len == 0: return false
     for i in 0..<c.curves.len:
       let prev = c.pointAtCurve(i, 1)

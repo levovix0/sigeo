@@ -44,6 +44,10 @@ proc pointAtParam*(line: LineSection, param: FloatParam): Point2 =
   line.startPoint + (line.endPoint - line.startPoint) * param
 
 
+proc derAtParam*(line: LineSection, param: FloatParam): V2 {.inline.} =
+  line.toVec
+
+
 proc length*(line: LineSection): Float =
   (line.endPoint - line.startPoint).length
 

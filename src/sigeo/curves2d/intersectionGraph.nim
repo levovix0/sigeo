@@ -271,10 +271,9 @@ proc pointOnEdge*(graph: CurveGraph, edge: int, t: FloatParam): Point2 =
 
 
 proc edgeLength*(graph: CurveGraph, edge: int): Float =
-  ## approximate length of the curve piece the edge represents
+  ## length of the curve piece the edge represents
   let e = graph.edges[edge]
-  graph.curves[e.curve].length * (e.endParam.Float - e.startParam.Float)
-  # todo: use cut, when it will eventually be part of the Curve2 interface
+  graph.curves[e.curve].cut(e.startParam, e.endParam).length
 
 
 proc removeDeadEnds*(graph: var CurveGraph) =

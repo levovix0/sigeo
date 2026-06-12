@@ -131,6 +131,12 @@ proc pointAtParam*(curve: EllipseArc, t: FloatParam): Point2 =
   curve.pointAtAngle(curve.angleAtParam(t))
 
 
+proc derAtParam*(curve: EllipseArc, t: FloatParam): V2 =
+  let angLen = curve.angularLength
+  let angle = curve.angleAtParam(t)
+  (angLen * v2(-curve.size.x / 2 * sin(angle), curve.size.y / 2 * cos(angle))).rotate(curve.rotation)
+
+
 proc cut*(curve: EllipseArc, a, b: FloatParam): EllipseArc =
   ## returns the part of the arc between params `a` and `b`, such that
   ## `result.pointAtParam(t) == curve.pointAtParam(a + t * (b - a))`
@@ -216,6 +222,19 @@ when isMainModule:
                 "cut mismatch: dir=" & $dir & " rotation=" & $rotation &
                 " sa=" & $sa & " ea=" & $ea & " a=" & $a & " b=" & $b & " t=" & $t
   echo "cut invariant ok"
+
+  block:
+    # derAtParam matches finite differences
+    for dir in [counterclockwise, clockwise]:
+      for rotation in [0.0, Pi/6, -2*Pi/3]:
+        for (sa, ea) in [(0.0, 0.0), (Pi/2, Pi), (-3*Pi/4, Pi/4)]:
+          let arc = ellipseArc(point2(1, 2), v2(6, 2), sa, ea, dir, rotation)
+          for t in [0.1, 0.4, 0.9]:
+            const eps = 1e-6
+            let numeric = (arc.pointAtParam(t + eps) - arc.pointAtParam(t - eps)) / (2 * eps)
+            doAssert (arc.derAtParam(t) - numeric).length < 1e-5,
+              "der mismatch: dir=" & $dir & " rotation=" & $rotation & " sa=" & $sa & " ea=" & $ea & " t=" & $t
+  echo "derAtParam ok"
 
   block:
     # bounds of a rotated arc: contains all sampled points and is tight
