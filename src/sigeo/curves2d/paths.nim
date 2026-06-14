@@ -156,20 +156,31 @@ proc add*(this: var Path2, c: Curve2) =
   if this.curves.len == 0:
     this.curves.add c.toOwnedCurve2
     this.reversed.len = this.curves.len
-  elif this.pointAtParam(1) ~== c.pointAtParam(0):
+    return
+  
+  let p =
+    if this.curves.len == 1 and this.curves[0].isOf(LineSection2) and this.curves[0].castTo(LineSection2).length ~== 0:
+      let p = this.curves[0].castTo(LineSection2).startPoint
+      this.curves.setLen 0
+      this.reversed.len = 0
+      p
+    else:
+      this.pointAtParam(1)
+  
+  if p ~== c.pointAtParam(0):
     this.curves.add c.toOwnedCurve2
     this.reversed.len = this.curves.len
-  elif this.pointAtParam(1) ~== c.pointAtParam(1):
+  elif p ~== c.pointAtParam(1):
     this.curves.add c.toOwnedCurve2
     this.reversed[this.curves.high] = true
   else:
-    this.curves.add lineSection(this.pointAtParam(1), c.pointAtParam(0)).toOwnedCurve2
+    this.curves.add lineSection(p, c.pointAtParam(0)).toOwnedCurve2
     this.curves.add c.toOwnedCurve2
     this.reversed.len = this.curves.len
 
 
 proc add*(this: var Path2, p: Point2) =
-  this.curves.add lineSection(this.pointAtParam(1), p).toOwnedCurve2
+  this.curves.add lineSection(if this.curves.len == 0: p else: this.pointAtParam(1), p).toOwnedCurve2
   this.reversed.len = this.curves.len
 
 # todo: proc addArc*(this: var Path2, p: Point2)
