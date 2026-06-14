@@ -1,12 +1,13 @@
 import ../core/[vectors, points, bounds, buildutils]
-import ./icurve2
+import ../macros/[genAliases]
+import ./[icurve2]
 
 when sigeo_backend == SigeoOpencascade:
   import pkg/opencascade
 
 
 type
-  EllipseArc* = object
+  EllipseArc2* = object
     ## a kind of 2d curve — an arc of an arbitrarily rotated ellipse
     center*: Point2
     size*: V2
@@ -20,15 +21,17 @@ type
     direction*: AngleDirection
     rotation*: Float
       ## signed angle from global +x to the ellipse's own x axis in radians
+  
+  EllipseArc* {.deprecated: "renamed to EllipseArc2".} = EllipseArc2
 
 
-proc ellipseArc*(
+proc ellipseArc2*(
   center: Point2, size: V2,
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise,
   rotation: Float = 0,
-): EllipseArc =
-  EllipseArc(
+): EllipseArc2 {.aliases: [ellipseArc].} =
+  EllipseArc2(
     center: center, size: size,
     startAngle: startAngle, endAngle: endAngle,
     direction: direction,
@@ -40,21 +43,21 @@ proc ellipseArc*(
   center: Point2, size: V2, xAxis: V2,
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise,
-): EllipseArc =
+): EllipseArc2 =
   ## constructs an ellipse arc with its own x axis pointing along `xAxis`
   ellipseArc(center, size, startAngle, endAngle, direction, rotation = xAxis.signedAngleToPlusX)
 
 
-proc xAxis*(arc: EllipseArc): V2 =
+proc xAxis*(arc: EllipseArc2): V2 =
   ## direction of the ellipse's own x axis
   v2(cos(arc.rotation), sin(arc.rotation))
 
 
-proc fullEllipse*(arc: EllipseArc): bool {.inline.} =
+proc fullEllipse*(arc: EllipseArc2): bool {.inline.} =
   arc.startAngle == arc.endAngle
 
 
-proc angularLength*(arc: EllipseArc): Float =
+proc angularLength*(arc: EllipseArc2): Float =
   ## returns signed angular sweep of the arc in radians, `Pi*2` for full ellipse
   if arc.fullEllipse:
     if (arc.direction == counterclockwise) == sigeo_axisY_up: 2 * Pi
@@ -99,7 +102,7 @@ const gl16Nodes   = gl16[0]
 const gl16Weights = gl16[1]
 
 
-proc length*(arc: EllipseArc): Float =
+proc length*(arc: EllipseArc2): Float =
   ## arc length via 16-point Gauss-Legendre quadrature
   ## integrand: ds/dθ = √(rx^2 * sin(θ)^2 + ry^2 * cos(θ)^2)
   let rx = arc.size.x / 2
@@ -121,29 +124,29 @@ proc length*(arc: EllipseArc): Float =
   abs(half) * sum
 
 
-proc angleAtParam*(curve: EllipseArc, t: FloatParam): Float {.inline.} =
+proc angleAtParam*(curve: EllipseArc2, t: FloatParam): Float {.inline.} =
   curve.startAngle + t * curve.angularLength
 
-proc pointAtAngle(curve: EllipseArc, angle: Float): Point2 {.inline.} =
+proc pointAtAngle(curve: EllipseArc2, angle: Float): Point2 {.inline.} =
   curve.center + v2(curve.size.x / 2 * cos(angle), curve.size.y / 2 * sin(angle)).rotate(curve.rotation)
 
-proc pointAtParam*(curve: EllipseArc, t: FloatParam): Point2 =
+proc pointAtParam*(curve: EllipseArc2, t: FloatParam): Point2 =
   curve.pointAtAngle(curve.angleAtParam(t))
 
 
-proc derAtParam*(curve: EllipseArc, t: FloatParam): V2 =
+proc derAtParam*(curve: EllipseArc2, t: FloatParam): V2 =
   let angLen = curve.angularLength
   let angle = curve.angleAtParam(t)
   (angLen * v2(-curve.size.x / 2 * sin(angle), curve.size.y / 2 * cos(angle))).rotate(curve.rotation)
 
 
-proc cut*(curve: EllipseArc, a, b: FloatParam): EllipseArc =
+proc cut*(curve: EllipseArc2, a, b: FloatParam): EllipseArc2 =
   ## returns the part of the arc between params `a` and `b`, such that
   ## `result.pointAtParam(t) == curve.pointAtParam(a + t * (b - a))`
   ## if `a > b`, the resulting arc goes backwards along the original arc
   let angLen = curve.angularLength
   let sweep = angLen * (b.Float - a.Float)
-  EllipseArc(
+  EllipseArc2(
     center: curve.center,
     size: curve.size,
     startAngle: normalizeAngle(curve.startAngle + a.Float * angLen),
@@ -153,15 +156,15 @@ proc cut*(curve: EllipseArc, a, b: FloatParam): EllipseArc =
   )
 
 
-proc invertDir*(curve: EllipseArc): EllipseArc =
+proc invertDir*(curve: EllipseArc2): EllipseArc2 =
   result = curve
   result.direction = (if curve.direction == clockwise: counterclockwise else: clockwise)
 
-proc reverse*(curve: EllipseArc): EllipseArc {.inline.} = curve.cut(1, 0)
+proc reverse*(curve: EllipseArc2): EllipseArc2 {.inline.} = curve.cut(1, 0)
 
 
 
-proc bounds*(curve: EllipseArc, a, b: FloatParam): Bounds2 =
+proc bounds*(curve: EllipseArc2, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the arc between params `a` and `b`
   let rx = curve.size.x / 2
   let ry = curve.size.y / 2
@@ -186,7 +189,7 @@ proc bounds*(curve: EllipseArc, a, b: FloatParam): Bounds2 =
 
 
 when sigeo_backend == SigeoOpencascade:
-  proc toOpencascadeShape*(this: EllipseArc;): TopoDS_Shape =
+  proc toOpencascadeShape*(this: EllipseArc2;): TopoDS_Shape =
     bRepBuilderAPI_MakeEdge(
       gp_Elips(gp_Ax2(gp_Pnt(this.center.x, this.center.y, 0), gp_Dir(0, 0, 1), gp_Dir(cos(this.rotation), sin(this.rotation), 0)), this.size.x, this.size.y),
       (if this.direction == counterclockwise: this.startAngle else: this.endAngle),
@@ -195,7 +198,7 @@ when sigeo_backend == SigeoOpencascade:
 
 
 
-Curve2.implementInterfaceFor(EllipseArc)
+Curve2.implementInterfaceFor(EllipseArc2)
 
 
 when isMainModule:

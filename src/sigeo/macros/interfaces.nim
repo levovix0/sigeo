@@ -189,7 +189,10 @@ macro makeInterface*(name: untyped, body: untyped) =
     @[newEmptyNode(), newIdentDefs(ident"this", nnkVarTy.newTree(ownedName)),
       newIdentDefs(ident"other", ownedName)],
     newStmtList(
-      callThrough("this", "destroy", @[dot("this", "obj")]),
+      nnkIfStmt.newTree(nnkElifBranch.newTree(
+        nnkInfix.newTree(ident("!="), dot("this", "obj"), newNilLit()),
+        callThrough("this", "destroy", @[dot("this", "obj")])
+      )),
       callThrough("other", "sink", @[dot("other", "obj"), dot("this", "obj")]),
       nnkAsgn.newTree(dot("this", "vtable"), dot("other", "vtable"))
     )

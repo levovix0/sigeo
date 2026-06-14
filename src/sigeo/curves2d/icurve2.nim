@@ -40,3 +40,10 @@ proc view*(curves {.byref.}: seq[OwnedCurve2]): lent seq[Curve2] =
   ## yep, this is totaly safe, Curve2 is guarantied to have same binary representation as OwnedCurve2
   cast[ptr seq[Curve2]](curves.addr)[]
 
+
+proc toOwnedCurve2*(c: Curve2): OwnedCurve2 =
+  # todo: move to macros
+  assert c.obj != nil
+  result.vtable = c.vtable
+  c.vtable.dup(c.obj, result.obj)
+

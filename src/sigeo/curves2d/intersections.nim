@@ -36,28 +36,28 @@ template wrapIntersectionToReturnSeq(t1, t2) =
 
 
 
-template maxIntersectionPoints*(a, b: LineSection): int =
+template maxIntersectionPoints*(a, b: LineSection2): int =
   1
 
-template maxIntersectionPoints*(a, b: CircleArc): int =
+template maxIntersectionPoints*(a, b: CircleArc2): int =
   2
 
-template maxIntersectionPoints*(a: LineSection, b: CircleArc): int {.anyOrder.} =
+template maxIntersectionPoints*(a: LineSection2, b: CircleArc2): int {.anyOrder.} =
   2
 
 
-template maxIntersectionSegments*(a, b: LineSection): int =
+template maxIntersectionSegments*(a, b: LineSection2): int =
   1
 
-template maxIntersectionSegments*(a, b: CircleArc): int =
+template maxIntersectionSegments*(a, b: CircleArc2): int =
   2
 
-template maxIntersectionSegments*(a: LineSection, b: CircleArc): int {.anyOrder.} =
+template maxIntersectionSegments*(a: LineSection2, b: CircleArc2): int {.anyOrder.} =
   0
 
 
 
-proc fastIntersectionPoint*(curveA: LineSection, curveB: LineSection): Point2 =
+proc fastIntersectionPoint*(curveA: LineSection2, curveB: LineSection2): Point2 =
   ## returns position of intersection point, assuming there is one
   let
     curveA_dir = curveA.direction
@@ -96,7 +96,7 @@ proc fastIntersectionPoint*(curveA: LineSection, curveB: LineSection): Point2 =
 
 
 
-proc intersectionPoint*(curveA: LineSection, curveB: LineSection): Option[Point2] =
+proc intersectionPoint*(curveA: LineSection2, curveB: LineSection2): Option[Point2] =
   if isParallel(curveA.toVec, curveB.toVec):
     if curveB.hasPoint(curveA.startPoint): some curveA.startPoint
     elif curveB.hasPoint(curveA.endPoint): some curveA.endPoint
@@ -113,8 +113,8 @@ proc intersectionPoint*(curveA: LineSection, curveB: LineSection): Option[Point2
 
 
 proc intersectionPointsParams*(
-  curveA: LineSection,
-  curveB: LineSection,
+  curveA: LineSection2,
+  curveB: LineSection2,
   pointsCount: var int,
 ): array[maxIntersectionPoints(curveA, curveB), FloatParam2] =
   ## returns all parameters for each curve at which the curves intersects
@@ -176,8 +176,8 @@ proc intersectionPointsParams*(
 
 
 proc intersectionSegmentsParams*(
-  curveA: LineSection,
-  curveB: LineSection,
+  curveA: LineSection2,
+  curveB: LineSection2,
   segmentsCount: var int,
 ): array[maxIntersectionSegments(curveA, curveB), FloatParamSegment2] =
   let av = curveA.endPoint - curveA.startPoint
@@ -210,19 +210,19 @@ proc intersectionSegmentsParams*(
 
 
 
-proc hasIntersectedSegments*(a, b: LineSection): bool =
+proc hasIntersectedSegments*(a, b: LineSection2): bool =
   var segmentsCount = 0
   discard intersectionSegmentsParams(a, b, segmentsCount)
   segmentsCount > 0
 
 
-wrapIntersectionToReturnSeq(LineSection, LineSection)
+wrapIntersectionToReturnSeq(LineSection2, LineSection2)
 
 
 
 proc intersectionPointsParams*(
-  curveA: LineSection,
-  curveB: CircleArc,
+  curveA: LineSection2,
+  curveB: CircleArc2,
   pointsCount: var int,
 ): array[maxIntersectionPoints(curveA, curveB), FloatParam2] =
   let d = curveA.endPoint - curveA.startPoint
@@ -265,14 +265,14 @@ proc intersectionPointsParams*(
     checkPoint((-qb + sqrtDisc) / (2 * qa))
 
 
-wrapIntersectionToReturnSeq(LineSection, CircleArc)
+wrapIntersectionToReturnSeq(LineSection2, CircleArc2)
 
 
 
 when isMainModule:
   import print
 
-  print "\n\nLineSection <-> LineSection"
+  print "\n\nLineSection2 <-> LineSection2"
 
   block:
     print intersectionPointsParams(
@@ -326,7 +326,7 @@ when isMainModule:
       lineSection(point2(0, 1), point2(1, 0)),
     )
 
-  print "\n\nLineSection <-> CircleArc"
+  print "\n\nLineSection2 <-> CircleArc2"
 
   block:
     let arc = circleArc(point2(0, 0), 1, 0, PI)

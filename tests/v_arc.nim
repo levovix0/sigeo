@@ -1,4 +1,4 @@
-## Visual test: displays CircleArc paths for all combinations of start/end angles
+## Visual test: displays CircleArc2 paths for all combinations of start/end angles
 ## (step = Pi/4). Spacebar toggles direction between CCW and CW for all arcs.
 ## Blue = CCW, orange = CW. Grey diagonal = full circles (start == end).
 ##
@@ -28,7 +28,7 @@ let winW  = int32(margin*2 + gridW)
 let winH  = int32(margin*2 + gridH)
 
 let app = newVisualTest(
-  title = "sigeo CircleArc — rows=startAngle cols=endAngle  [Space] toggle CCW/CW",
+  title = "sigeo CircleArc2 — rows=startAngle cols=endAngle  [Space] toggle CCW/CW",
   size = ivec2(winW, winH),
   contentCenter = vec2(winW.float32 / 2, winH.float32 / 2),
 )

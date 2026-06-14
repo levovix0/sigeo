@@ -127,13 +127,13 @@ proc intersectionPointsParams*(
   ## dispatches to exact analytic intersections for known curve type pairs,
   ## falls back to `genericIntersectionPointsParams` otherwise
 
-  if curveA.isOf(LineSection) and curveB.isOf(LineSection):
-    intersectionPointsParams(curveA.castTo(LineSection), curveB.castTo(LineSection))
-  elif curveA.isOf(LineSection) and curveB.isOf(CircleArc):
-    intersectionPointsParams(curveA.castTo(LineSection), curveB.castTo(CircleArc))
-  elif curveA.isOf(CircleArc) and curveB.isOf(LineSection):
+  if curveA.isOf(LineSection2) and curveB.isOf(LineSection2):
+    intersectionPointsParams(curveA.castTo(LineSection2), curveB.castTo(LineSection2))
+  elif curveA.isOf(LineSection2) and curveB.isOf(CircleArc2):
+    intersectionPointsParams(curveA.castTo(LineSection2), curveB.castTo(CircleArc2))
+  elif curveA.isOf(CircleArc2) and curveB.isOf(LineSection2):
     var r: seq[FloatParam2]
-    for p in intersectionPointsParams(curveB.castTo(LineSection), curveA.castTo(CircleArc)):
+    for p in intersectionPointsParams(curveB.castTo(LineSection2), curveA.castTo(CircleArc2)):
       r.add (curveA: p.curveB, curveB: p.curveA)
     r
   else:
@@ -322,7 +322,7 @@ when isMainModule:
   import print
   import ./ellipseArc
 
-  print "\n\n--- generic intersection: CircleArc <-> CircleArc ---"
+  print "\n\n--- generic intersection: CircleArc2 <-> CircleArc2 ---"
 
   block:
     let a = circleArc(point2(0, 0), 1, 0, 0)
@@ -333,7 +333,7 @@ when isMainModule:
       print a.pointAtParam(p.curveA)  # around (0.5, ±sqrt(3)/2)
       assert a.pointAtParam(p.curveA).distanceTo(b.pointAtParam(p.curveB)) < 1e-8
 
-  print "\n\n--- generic intersection: LineSection <-> EllipseArc ---"
+  print "\n\n--- generic intersection: LineSection2 <-> EllipseArc2 ---"
 
   block:
     let line = lineSection(point2(-2, 0.0), point2(2, 0.0))

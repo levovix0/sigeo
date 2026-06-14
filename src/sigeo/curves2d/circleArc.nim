@@ -7,7 +7,7 @@ when sigeo_backend == SigeoOpencascade:
 
 
 type
-  CircleArc* = object
+  CircleArc2* = object
     ## a kind of 2d curve
     center*: Point2
     radius*: Float
@@ -17,19 +17,21 @@ type
       ## positive is counterclockwise, negative is clockwise
     direction*: AngleDirection
       ## is arc counterclockwise or clockwise from start to end
+  
+  CircleArc* {.deprecated: "renamed to CircleArc2".} = CircleArc2
 
 
-proc adjustToPrecision*(circle: var CircleArc) =
+proc adjustToPrecision*(circle: var CircleArc2) =
   if circle.startAngle.almostEqual(circle.endAngle):
     circle.startAngle = circle.endAngle
 
 
-proc circleArc*(
+proc circleArc2*(
   center: Point2, radius: Float,
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise
-): CircleArc =
-  result = CircleArc(
+): CircleArc2 {.aliases: [circleArc].} =
+  result = CircleArc2(
     center: center,
     radius: radius,
     startAngle: startAngle,
@@ -47,20 +49,20 @@ proc circleArc*(
   adjustToPrecision(result)
 
 
-proc fullCircle*(circle: CircleArc): bool {.aliases: [closed, isCircle, isFullCircle, isClosed].} =
+proc fullCircle*(circle: CircleArc2): bool {.aliases: [closed, isCircle, isFullCircle, isClosed].} =
   ## returns true if arc is full circle
   ## requires `circle` to be constructed via `circleArc` proc or be adjusted via `adjustToPrecision` proc
   circle.startAngle == circle.endAngle
 
 
-proc startPoint*(circle: CircleArc): Point2 =
+proc startPoint*(circle: CircleArc2): Point2 =
   circle.center + circle.radius * v2(cos(circle.startAngle), sin(circle.startAngle))
 
-proc endPoint*(circle: CircleArc): Point2 =
+proc endPoint*(circle: CircleArc2): Point2 =
   circle.center + circle.radius * v2(cos(circle.endAngle), sin(circle.endAngle))
 
 
-proc angularLength*(circle: CircleArc): Float =
+proc angularLength*(circle: CircleArc2): Float =
   ## returns signed angular sweep of the arc in radians, `Pi*2` for full circle
   if circle.fullCircle:
     if (circle.direction == counterclockwise) == sigeo_axisY_up: 2 * Pi
@@ -73,22 +75,22 @@ proc angularLength*(circle: CircleArc): Float =
       if diff >= 0: diff - 2 * Pi else: diff
 
 
-proc length*(circle: CircleArc): Float {.inline.} =
+proc length*(circle: CircleArc2): Float {.inline.} =
   abs(circle.angularLength) * circle.radius
 
 
-proc pointAtParam*(curve: CircleArc, t: FloatParam): Point2 =
+proc pointAtParam*(curve: CircleArc2, t: FloatParam): Point2 =
   let angle = curve.startAngle + t * curve.angularLength
   curve.center + curve.radius * v2(cos(angle), sin(angle))
 
 
-proc derAtParam*(curve: CircleArc, t: FloatParam): V2 =
+proc derAtParam*(curve: CircleArc2, t: FloatParam): V2 =
   let angLen = curve.angularLength
   let angle = curve.startAngle + t * angLen
   curve.radius * angLen * v2(-sin(angle), cos(angle))
 
 
-proc paramAtPoint*(circle: CircleArc, point: Point2): FloatParam =
+proc paramAtPoint*(circle: CircleArc2, point: Point2): FloatParam =
   ## returns arbitrary number `t` such that circle.pointAtParam(`t`) returns `point`
   ## assumes that `point` is on circle arc
   let v = point - circle.center
@@ -97,13 +99,13 @@ proc paramAtPoint*(circle: CircleArc, point: Point2): FloatParam =
 
 
 
-proc cut*(curve: CircleArc, a, b: FloatParam): CircleArc =
+proc cut*(curve: CircleArc2, a, b: FloatParam): CircleArc2 =
   ## returns the part of the arc between params `a` and `b`, such that
   ## `result.pointAtParam(t) == curve.pointAtParam(a + t * (b - a))`
   ## if `a > b`, the resulting arc goes backwards along the original arc
   let angLen = curve.angularLength
   let sweep = angLen * (b.Float - a.Float)
-  CircleArc(
+  CircleArc2(
     center: curve.center,
     radius: curve.radius,
     startAngle: normalizeAngle(curve.startAngle + a.Float * angLen),
@@ -112,15 +114,15 @@ proc cut*(curve: CircleArc, a, b: FloatParam): CircleArc =
   )
 
 
-proc invertDir*(curve: CircleArc): CircleArc =
+proc invertDir*(curve: CircleArc2): CircleArc2 =
   result = curve
   result.direction = (if curve.direction == clockwise: counterclockwise else: clockwise)
 
-proc reverse*(curve: CircleArc): CircleArc {.inline.} = curve.cut(1, 0)
+proc reverse*(curve: CircleArc2): CircleArc2 {.inline.} = curve.cut(1, 0)
 
 
 
-proc bounds*(curve: CircleArc, a, b: FloatParam): Bounds2 =
+proc bounds*(curve: CircleArc2, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the arc between params `a` and `b`
   let angLen = curve.angularLength
   let ang0 = curve.startAngle + a.Float * angLen
@@ -143,7 +145,7 @@ proc bounds*(curve: CircleArc, a, b: FloatParam): Bounds2 =
 
 
 when sigeo_backend == SigeoOpencascade:
-  proc toOpencascadeShape*(this: CircleArc;): TopoDS_Shape =
+  proc toOpencascadeShape*(this: CircleArc2;): TopoDS_Shape =
     bRepBuilderAPI_MakeEdge(
       gp_Circ(gp_Ax2(gp_Pnt(this.center.x, this.center.y, 0), gp_Dir(0, 0, 1)), this.radius),
       (if this.direction == counterclockwise: this.startAngle else: this.endAngle),
@@ -152,7 +154,7 @@ when sigeo_backend == SigeoOpencascade:
 
 
 
-Curve2.implementInterfaceFor(CircleArc)
+Curve2.implementInterfaceFor(CircleArc2)
 
 
 when isMainModule:

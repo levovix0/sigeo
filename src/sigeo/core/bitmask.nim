@@ -52,6 +52,11 @@ proc `$`*(bm: Bitmask): string =
 proc add*(bm: var Bitmask, v: bool) {.inline.} =
   bm[bm.len] = v
 
+proc insert*(bm: var Bitmask, v: bool, i = 0) =
+  for i2 in countdown(bm.len - 1, i):
+    bm[i2 + 1] = bm[i2]
+  bm[i] = v
+
 
 proc del*(bm: var Bitmask, i: int) =
   if i >= bm.len:

@@ -3,11 +3,11 @@ import sigeo/[core, curves2d]
 
 
 test "curves2d intersections":
-  let line_a = LineSection(startPoint: point2(0, 0), endPoint: point2(2, 2))
-  let line_b = LineSection(startPoint: point2(1, 0), endPoint: point2(0, 1))
-  let line_c = LineSection(startPoint: point2(1, 0), endPoint: point2(0.5, 0.5))
-  let line_d = LineSection(startPoint: point2(404, 404), endPoint: point2(404, 504))
-  let line_e = LineSection(startPoint: point2(404, 464), endPoint: point2(504, 504))
+  let line_a = LineSection2(startPoint: point2(0, 0), endPoint: point2(2, 2))
+  let line_b = LineSection2(startPoint: point2(1, 0), endPoint: point2(0, 1))
+  let line_c = LineSection2(startPoint: point2(1, 0), endPoint: point2(0.5, 0.5))
+  let line_d = LineSection2(startPoint: point2(404, 404), endPoint: point2(404, 504))
+  let line_e = LineSection2(startPoint: point2(404, 464), endPoint: point2(504, 504))
   
   block:
     var pointsN = 0

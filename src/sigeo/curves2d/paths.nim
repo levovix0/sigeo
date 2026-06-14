@@ -1,6 +1,6 @@
 import ../[core]
-import ../macros/[interfaces]
-import ./[icurve2]
+import ../macros/[interfaces, cursors]
+import ./[icurve2, lineSection, circleArc]
 
 when sigeo_backend == SigeoOpencascade:
   import ./[lineSection, circleArc, ellipseArc]
@@ -136,6 +136,96 @@ proc cut*(this: Path2, a, b: FloatParam): OwnedCurve2 =
     return res.toOwnedCurve2
 
 
+
+proc makeNotReversed*(this: var Path2, i: int) =
+  if i notin 0..this.curves.high: return
+  if this.reversed[i]:
+    this.curves[i] = this.curves[i].cut(1, 0)
+    this.reversed[i] = false
+
+
+
+proc close*(this: var Path2) =
+  if not this.isClosed:
+    this.curves.add lineSection(this.pointAtParam(1), this.pointAtParam(0)).toOwnedCurve2
+    this.reversed.len = this.curves.len
+
+
+proc add*(this: var Path2, c: Curve2) =
+  ## adds a curve to path. If curve does not start or end at path end, adds a line section to start of the added curve
+  if this.curves.len == 0:
+    this.curves.add c.toOwnedCurve2
+    this.reversed.len = this.curves.len
+  elif this.pointAtParam(1) ~== c.pointAtParam(0):
+    this.curves.add c.toOwnedCurve2
+    this.reversed.len = this.curves.len
+  elif this.pointAtParam(1) ~== c.pointAtParam(1):
+    this.curves.add c.toOwnedCurve2
+    this.reversed[this.curves.high] = true
+  else:
+    this.curves.add lineSection(this.pointAtParam(1), c.pointAtParam(0)).toOwnedCurve2
+    this.curves.add c.toOwnedCurve2
+    this.reversed.len = this.curves.len
+
+
+proc add*(this: var Path2, p: Point2) =
+  this.curves.add lineSection(this.pointAtParam(1), p).toOwnedCurve2
+  this.reversed.len = this.curves.len
+
+# todo: proc addArc*(this: var Path2, p: Point2)
+
+
+proc addBevel*(this: var Path2, radius: Float) =
+  ## adds bevel between 2 last added curves
+  assert this.curves.len >= 2
+
+  if this.curves[^2].isOf(LineSection2) and this.curves[^1].isOf(LineSection2):
+    let betweenI = this.curves.len - 1
+    this.makeNotReversed this.curves.len-2
+    this.makeNotReversed this.curves.len-1
+    letCur c1: this.curves[^2].castTo(LineSection2)
+    letCur c2: this.curves[^1].castTo(LineSection2)
+    let p1 = c1.endPoint - c1.direction * radius
+    let p2 = c2.startPoint + c2.direction * radius
+    c1 = c1.cut(0, c1.paramAtPoint(p1))
+    c2 = c2.cut(c2.paramAtPoint(p2), 1)
+    this.curves.insert lineSection(p1, p2).toOwnedCurve2, betweenI
+    this.reversed.insert false, betweenI
+  
+  else:
+    raise ValueError.newException("not implemented")
+
+
+proc addFillet*(this: var Path2, radius: Float) =
+  ## adds circular arc fillet between 2 last added curves
+  assert this.curves.len >= 2
+
+  if this.curves[^2].isOf(LineSection2) and this.curves[^1].isOf(LineSection2):
+    let betweenI = this.curves.len - 1
+    this.makeNotReversed this.curves.len-2
+    this.makeNotReversed this.curves.len-1
+    letCur c1: this.curves[^2].castTo(LineSection2)
+    letCur c2: this.curves[^1].castTo(LineSection2)
+    let d1 = c1.direction
+    let d2 = c2.direction
+    let p1 = c1.endPoint - d1 * radius
+    let p2 = c2.startPoint + d2 * radius
+    c1 = c1.cut(0, c1.paramAtPoint(p1))
+    c2 = c2.cut(c2.paramAtPoint(p2), 1)
+    let turnSign = d1.skew(d2)
+    let normal = if turnSign >= 0: d1.rot90cc else: d1.rot90c
+    let center = p1 + normal * radius
+    let startAngle = (p1 - center).planarAngle
+    let endAngle = (p2 - center).planarAngle
+    let direction = if (turnSign > 0) == sigeo_axisY_up: counterclockwise else: clockwise
+    this.curves.insert circleArc(center, radius, startAngle, endAngle, direction).toOwnedCurve2, betweenI
+    this.reversed.insert false, betweenI
+
+  else:
+    raise ValueError.newException("not implemented")
+
+
+
 when sigeo_backend == SigeoOpencascade:
   proc add(wire: var BRepBuilderAPI_MakeWire, curve: Curve2Concept) =
     let curve = curve.toOpencascadeShape
@@ -220,7 +310,7 @@ when isMainModule:
   block:
     let line = lineSection(point2(0, 0), point2(2, 2))
     let piece = line.toCurve2.cut(0.25.FloatParam, 0.75.FloatParam)
-    assert piece.isOf(LineSection)
+    assert piece.isOf(LineSection2)
     assert piece.pointAtParam(0).distanceTo(point2(0.5, 0.5)) < 1e-9
     assert piece.pointAtParam(1).distanceTo(point2(1.5, 1.5)) < 1e-9
 
