@@ -30,7 +30,7 @@ proc circleArc2*(
   center: Point2, radius: Float,
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise
-): CircleArc2 {.aliases: [circleArc].} =
+): CircleArc2 {.aliases: [circleArc, circle, arc].} =
   result = CircleArc2(
     center: center,
     radius: radius,

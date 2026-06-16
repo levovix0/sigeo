@@ -30,7 +30,7 @@ proc ellipseArc2*(
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise,
   rotation: Float = 0,
-): EllipseArc2 {.aliases: [ellipseArc].} =
+): EllipseArc2 {.aliases: [ellipseArc, ellipse].} =
   EllipseArc2(
     center: center, size: size,
     startAngle: startAngle, endAngle: endAngle,
@@ -39,11 +39,11 @@ proc ellipseArc2*(
   )
 
 
-proc ellipseArc*(
+proc ellipseArc2*(
   center: Point2, size: V2, xAxis: V2,
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise,
-): EllipseArc2 =
+): EllipseArc2 {.aliases: [ellipseArc, ellipse].} =
   ## constructs an ellipse arc with its own x axis pointing along `xAxis`
   ellipseArc(center, size, startAngle, endAngle, direction, rotation = xAxis.signedAngleToPlusX)
 

@@ -15,7 +15,7 @@ type
   LineSection* {.deprecated: "renamed to LineSection2".} = LineSection2
 
 
-proc lineSection2*(startPoint, endPoint: Point2): LineSection2 {.aliases: [lineSection].} =
+proc lineSection2*(startPoint, endPoint: Point2): LineSection2 {.aliases: [lineSection, line].} =
   if startPoint ~== endPoint:
     when defined(sigeo_return_small_curve_when_costructed_curve_has_zero_length):
       return LineSection2(
