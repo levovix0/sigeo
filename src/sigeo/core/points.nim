@@ -24,6 +24,13 @@ proc point3*(x, y, z: Float): Point3 {.aliases: [p3].} =
   v3(x, y, z).Point3
 
 
+proc point2*(xy: Float): Point2 {.aliases: [p2].} =
+  v2(xy, xy).Point2
+
+proc point3*(xyz: Float): Point3 {.aliases: [p3].} =
+  v3(xyz, xyz, xyz).Point3
+
+
 template x*(p: Point2): Float = p.V2.x
 template y*(p: Point2): Float = p.V2.y
 
