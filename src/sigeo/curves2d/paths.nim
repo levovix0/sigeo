@@ -4,7 +4,7 @@ import ./[icurve2, lineSection, circleArc]
 
 when sigeo_backend == SigeoOpencascade:
   import ./[ellipseArc]
-  import pkg/opencascade
+  import pkg/opencascade except sin, cos, min, max, floor
 
 when sigeo_backend == SigeoC3d:
   import pkg/c3d, pkg/c3d/bindings
@@ -165,6 +165,9 @@ proc cut(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): OwnedCurve2 = th
 proc transform(this: Path2_BuildPoint; m: M4): Path2_BuildPoint {.aliases: [`*`].} =
   result = this
   result.pos = this.pos.transform(m)
+
+when sigeo_backend == SigeoOpencascade:
+  proc toOpencascadeShape(this: Path2_BuildPoint;): TopoDS_Shape = discard
 
 Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Implement)
 
@@ -365,7 +368,7 @@ proc `-=`*(this: Path2_Y, v: Float) =
 # --- opencascade utils ---
 
 when sigeo_backend == SigeoOpencascade:
-  proc add(wire: var BRepBuilderAPI_MakeWire, curve: Curve2Concept) =
+  proc addSigeoCurve(wire: var BRepBuilderAPI_MakeWire, curve: Curve2Concept) =
     let curve = curve.toOpencascadeShape
     if curve.shapeType == TopAbs_EDGE:
       wire.add curve.edge
@@ -414,7 +417,7 @@ when sigeo_backend == SigeoOpencascade:
   proc toOpencascadeShape*(this: Path2;): TopoDS_Shape =
     var wire: BRepBuilderAPI_MakeWire
     for curve in this.curves.view:
-      wire.add curve
+      wire.addSigeoCurve curve
     wire.shape
 
 

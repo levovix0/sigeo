@@ -1,4 +1,4 @@
-import macros
+# import macros
 
 macro anyOrder*(body: untyped): untyped =
   #[runnableExamples:

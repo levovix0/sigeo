@@ -3,7 +3,7 @@ import ../macros/[genAliases]
 import ./[icurve2]
 
 when sigeo_backend == SigeoOpencascade:
-  import pkg/opencascade
+  import pkg/opencascade except sin, cos, min, max
 
 
 type

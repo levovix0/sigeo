@@ -42,7 +42,7 @@ proc procTy(params: seq[NimNode], retType: NimNode, raisesNone: bool): NimNode =
   nnkProcTy.newTree(nnkFormalParams.newTree(formalParams), pragma)
 
 
-macro makeInterface*(name: untyped, body: untyped) =
+macro makeInterfaceImpl(name, body: untyped): untyped =
   let nameStr = name.strVal
   let vtableName = ident("Vtable" & nameStr)
 
@@ -271,6 +271,48 @@ macro makeInterface*(name: untyped, body: untyped) =
       ident("this"),
     )
 
+
+proc expandInterface(name: NimNode, body: NimNode): NimNode =
+  ## Expands any top-level `when` block into a `when` whose every branch holds a
+  ## `makeInterfaceFlat` call with the full method set (common methods + that
+  ## branch's methods). The compiler then only expands `makeInterfaceFlat` for
+  ## the active branch.
+  var whenIdx = -1
+  for i, stmt in body:
+    if stmt.kind == nnkWhenStmt:
+      whenIdx = i
+      break
+
+  if whenIdx == -1:
+    return nnkCall.newTree(bindSym("makeInterfaceImpl"), name, body)
+
+  proc bodyWith(branchBody: NimNode): NimNode =
+    ## common statements (everything except the chosen `when`) + branch statements
+    result = newStmtList()
+    for i in 0 ..< body.len:
+      if i == whenIdx:
+        if branchBody != nil:
+          for s in branchBody: result.add s
+      else:
+        result.add body[i]
+
+  let whenStmt = body[whenIdx]
+  result = nnkWhenStmt.newTree()
+  var hasElse = false
+  for branch in whenStmt:
+    case branch.kind
+    of nnkElifBranch:
+      result.add nnkElifBranch.newTree(branch[0], expandInterface(name, bodyWith(branch[1])))
+    of nnkElse:
+      hasElse = true
+      result.add nnkElse.newTree(expandInterface(name, bodyWith(branch[0])))
+    else: discard
+  if not hasElse:
+    result.add nnkElse.newTree(expandInterface(name, bodyWith(nil)))
+
+
+macro makeInterface*(name: untyped, body: untyped) =
+  expandInterface(name, body)
 
 
 macro implementInterfaceFor*(name: typed, implementors: varargs[typed], fwd: static ForwardDeclarePolicy = DeclareAndImplement) =
