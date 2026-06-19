@@ -84,3 +84,30 @@ test "curves2d transform":
 
     let el = ellipseArc(point2(0, 0), v2(4, 2), Pi/5, 7*Pi/6)
     check el.transform(scale(v3(3, 3, 1))).size ~== v2(12, 6)
+
+
+test "OwnedCurve2 copy into fresh/empty/valid slots":
+  let src = lineSection(point2(0, 0), point2(1, 1)).toOwnedCurve2
+
+  block: # copy into a fresh var
+    var dst: OwnedCurve2
+    dst = src
+    check dst.pointAtParam(1.FloatParam) ~== point2(1, 1)
+
+  block: # copy into a fresh seq slot
+    var s: seq[OwnedCurve2]
+    s.setLen 1
+    s[0] = src
+    check s[0].pointAtParam(1.FloatParam) ~== point2(1, 1)
+
+  block: # deep copy — mutating the source must not affect the copy
+    var a = lineSection(point2(0, 0), point2(1, 1)).toOwnedCurve2
+    let b = a
+    a.castTo(LineSection2).endPoint = point2(9, 9)
+    check b.pointAtParam(1.FloatParam) ~== point2(1, 1)
+
+  block: # copy an empty source over a valid destination clears it
+    var empty: OwnedCurve2
+    var c = lineSection(point2(0, 0), point2(2, 2)).toOwnedCurve2
+    c = empty
+    check c.obj == nil

@@ -169,9 +169,23 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
     @[newEmptyNode(), newIdentDefs(ident"this", nnkVarTy.newTree(ownedName)),
       newIdentDefs(ident"other", ownedName)],
     newStmtList(
-      callThrough("this", "destroy", @[dot("this", "obj")]),
-      callThrough("other", "dup", @[dot("other", "obj"), dot("this", "obj")]),
-      nnkAsgn.newTree(dot("this", "vtable"), dot("other", "vtable"))
+      nnkIfStmt.newTree(nnkElifBranch.newTree(
+        nnkInfix.newTree(ident("!="), dot("this", "obj"), newNilLit()),
+        callThrough("this", "destroy", @[dot("this", "obj")])
+      )),
+      nnkIfStmt.newTree(
+        nnkElifBranch.newTree(
+          nnkInfix.newTree(ident("!="), dot("other", "obj"), newNilLit()),
+          newStmtList(
+            callThrough("other", "dup", @[dot("other", "obj"), dot("this", "obj")]),
+            nnkAsgn.newTree(dot("this", "vtable"), dot("other", "vtable"))
+          )
+        ),
+        nnkElse.newTree(newStmtList(
+          nnkAsgn.newTree(dot("this", "obj"), newNilLit()),
+          nnkAsgn.newTree(dot("this", "vtable"), newNilLit())
+        ))
+      )
     )
   )
   # =dup: set vtable, then dup from this (source) into result (dest)
