@@ -12,8 +12,13 @@ when sigeo_backend == SigeoOpencascade:
     proc length(this;): Float
     proc pointAtParam(this; param: FloatParam): Point2
     proc derAtParam(this; param: FloatParam): V2
+    
     proc bounds(this; a: FloatParam, b: FloatParam): Bounds2
     proc cut(this; a: FloatParam, b: FloatParam): OwnedCurve2
+
+    proc transform(this; m: M4): OwnedCurve2
+    proc `*`(this; m: M4): OwnedCurve2  # (alias for transform)
+    
     proc `$`(this;): string
 
     proc toOpencascadeShape(this;): TopoDS_Shape
@@ -24,8 +29,13 @@ else:
     proc length(this;): Float
     proc pointAtParam(this; param: FloatParam): Point2
     proc derAtParam(this; param: FloatParam): V2
+
     proc bounds(this; a: FloatParam, b: FloatParam): Bounds2
     proc cut(this; a: FloatParam, b: FloatParam): OwnedCurve2
+
+    proc transform(this; m: M4): OwnedCurve2
+    proc `*`(this; m: M4): OwnedCurve2  # (alias for transform)
+    
     proc `$`(this;): string
 
 

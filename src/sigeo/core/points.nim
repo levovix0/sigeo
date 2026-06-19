@@ -166,3 +166,11 @@ proc almostEqual*(a, b: Point3, tolerance: Float): bool {.borrow.}
 
 template `~!=`*[T](a, b: T): bool = not(a ~== b)
 
+
+proc transform*(p: Point2, m: M4): Point2 {.aliases: [`*`].} =
+  ## applies a 4x4 transformation matrix to a 2d point, ignoring the z axis
+  point2(
+    m[0, 0] * p.x + m[1, 0] * p.y + m[3, 0],
+    m[0, 1] * p.x + m[1, 1] * p.y + m[3, 1],
+  )
+

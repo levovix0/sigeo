@@ -117,6 +117,12 @@ proc bounds*(line: LineSection2, a, b: FloatParam): Bounds2 =
 
 
 
+proc transform*(line: LineSection2, m: M4): LineSection2 {.aliases: [`*`].} =
+  ## returns a line with 4x4 transformation matrix applied.
+  lineSection2(line.startPoint.transform(m), line.endPoint.transform(m))
+
+
+
 when sigeo_backend == SigeoOpencascade:
   proc toOpencascadeShape*(this: LineSection2;): TopoDS_Shape =
     bRepBuilderAPI_MakeEdge(

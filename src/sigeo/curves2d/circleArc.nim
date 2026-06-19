@@ -144,6 +144,30 @@ proc bounds*(curve: CircleArc2, a, b: FloatParam): Bounds2 =
 
 
 
+proc transform*(curve: CircleArc2, m: M4): CircleArc2 {.aliases: [`*`].} =
+  ## returns a curve with 4x4 transformation matrix applied.
+  ## assumes the matrix scales uniformly, so a circle stays a circle
+  let scale = hypot(m[0, 0], m[0, 1])  # length of the transformed x axis
+  let rotation = arctan2(m[0, 1], m[0, 0]) # angle of the transformed x axis
+  let reflected = m[0, 0] * m[1, 1] - m[1, 0] * m[0, 1] < 0
+
+  if not reflected:
+    circleArc2(
+      curve.center.transform(m), scale * curve.radius,
+      curve.startAngle + rotation,
+      curve.endAngle + rotation,
+      curve.direction,
+    )
+  else:
+    circleArc2(
+      curve.center.transform(m), scale * curve.radius,
+      rotation - curve.startAngle,
+      rotation - curve.endAngle,
+      (if curve.direction == counterclockwise: clockwise else: counterclockwise),
+    )
+
+
+
 when sigeo_backend == SigeoOpencascade:
   proc toOpencascadeShape*(this: CircleArc2;): TopoDS_Shape =
     bRepBuilderAPI_MakeEdge(

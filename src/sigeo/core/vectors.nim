@@ -446,3 +446,12 @@ proc isPerpendicular*(a, b: V3): bool =
 proc isCodirectional*(a, b: V3): bool =
   a / a.length ~== b / b.length
 
+
+
+proc transform*(v: V2, m: M4): V2 {.aliases: [`*`].} =
+  ## applies the linear (2x2) part of a 4x4 matrix to a 2d vector, ignoring translation and the z axis.
+  v2(
+    m[0, 0] * v.x + m[1, 0] * v.y,
+    m[0, 1] * v.x + m[1, 1] * v.y,
+  )
+

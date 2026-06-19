@@ -1,5 +1,5 @@
 import ../[core]
-import ../macros/[interfaces, cursors]
+import ../macros/[interfaces, cursors, genAliases]
 import ./[icurve2, lineSection, circleArc]
 
 when sigeo_backend == SigeoOpencascade:
@@ -25,21 +25,11 @@ type
   Path2_X = distinct ptr Path2
   Path2_Y = distinct ptr Path2
 
+
   Path2* = object
     ## continuous sequence of curves
     curves*: seq[OwnedCurve2]
     reversed*: Bitmask  # todo: remove, use cut instead
-
-
-Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Declare)
-
-proc length(this: Path2_BuildPoint;): Float = 0
-proc pointAtParam(this: Path2_BuildPoint; param: FloatParam): Point2 = this.pos
-proc derAtParam(this: Path2_BuildPoint; param: FloatParam): V2 = v2(1, 0)
-proc bounds(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): Bounds2 = bounds2(this.pos)
-proc cut(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): OwnedCurve2 = this.toOwnedCurve2
-
-Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Implement)
 
 
 
@@ -161,6 +151,22 @@ proc cut*(this: Path2, a, b: FloatParam): OwnedCurve2 =
       )
     return res.toOwnedCurve2
 
+
+
+# --- Path2 construction API ---
+
+Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Declare)
+
+proc length(this: Path2_BuildPoint;): Float = 0
+proc pointAtParam(this: Path2_BuildPoint; param: FloatParam): Point2 = this.pos
+proc derAtParam(this: Path2_BuildPoint; param: FloatParam): V2 = v2(1, 0)
+proc bounds(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): Bounds2 = bounds2(this.pos)
+proc cut(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): OwnedCurve2 = this.toOwnedCurve2
+proc transform(this: Path2_BuildPoint; m: M4): Path2_BuildPoint {.aliases: [`*`].} =
+  result = this
+  result.pos = this.pos.transform(m)
+
+Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Implement)
 
 
 proc makeNotReversed*(this: var Path2, i: int) =
@@ -321,6 +327,8 @@ proc addFillet*(this: var Path2, radius: Float) {.deprecated: "use fillet or ins
 
 
 
+# --- opinionated path construction API extension ---
+
 proc at*(this: Path2): Point2 = this.pointAtParam(1)
 proc i*(this: Path2): int = this.curves.len
 
@@ -345,6 +353,16 @@ proc `+=`*(this: Path2_X, v: Float) =
 proc `+=`*(this: Path2_Y, v: Float) =
   (ptr Path2)(this)[].add v2(0, v)
 
+
+proc `-=`*(this: Path2_X, v: Float) =
+  (ptr Path2)(this)[].add v2(-v, 0)
+
+proc `-=`*(this: Path2_Y, v: Float) =
+  (ptr Path2)(this)[].add v2(0, -v)
+
+
+
+# --- opencascade utils ---
 
 when sigeo_backend == SigeoOpencascade:
   proc add(wire: var BRepBuilderAPI_MakeWire, curve: Curve2Concept) =
@@ -398,6 +416,15 @@ when sigeo_backend == SigeoOpencascade:
     for curve in this.curves.view:
       wire.add curve
     wire.shape
+
+
+proc transform*(this: Path2, m: M4): Path2 {.aliases: [`*`].} =
+  ## returns a curve with 4x4 transformation matrix applied.
+  ## traversal order and the `reversed` flags are preserved
+  result.curves = newSeq[OwnedCurve2](this.curves.len)
+  for i in 0 ..< this.curves.len:
+    result.curves[i] = this.curves.view[i].transform(m)
+  result.reversed = this.reversed
 
 
 Curve2.implementInterfaceFor(Path2, fwd = Implement)
