@@ -129,26 +129,26 @@ proc cut*(this: Path2, a, b: FloatParam): OwnedCurve2 =
   let ta = a.Float.clamp(0, 1) * n.Float
   let tb = b.Float.clamp(0, 1) * n.Float
 
-  proc localParam(this: Path2, t: Float): FloatParam =
-    if this.reversed[t.int]: (1 - (t - t.floor)).FloatParam else: (t - t.floor).FloatParam
+  proc localParam(this: Path2, curve: int, t: Float): FloatParam =
+    let lp = (t - curve.Float).clamp(0, 1)
+    if this.reversed[curve]: (1 - lp).FloatParam else: lp.FloatParam
 
-  if ta.int == tb.int:
-    return this[ta.int].cut(this.localParam(ta), this.localParam(tb))
+  let ia = clamp(int(ta), 0, n - 1)
+  let ib = clamp(int(tb), 0, n - 1)
+
+  if ia == ib:
+    return this[ia].cut(this.localParam(ia, ta), this.localParam(ib, tb))
   elif ta < tb:
     var res: Path2
-    for i in countup(ta.int, tb.int):
-      res.curves.add this[i].cut(
-        this.localParam(ta.clamp(i.Float, (i + 1).float)),
-        this.localParam(tb.clamp(i.Float, (i + 1).float)),
-      )
+    for i in countup(ia, ib):
+      res.curves.add this[i].cut(this.localParam(i, ta), this.localParam(i, tb))
+    res.reversed.len = res.curves.len
     return res.toOwnedCurve2
   else:
     var res: Path2
-    for i in countdown(ta.int, tb.int):
-      res.curves.add this[i].cut(
-        this.localParam(ta.clamp(i.Float, (i + 1).float)),
-        this.localParam(tb.clamp(i.Float, (i + 1).float)),
-      )
+    for i in countdown(ia, ib):
+      res.curves.add this[i].cut(this.localParam(i, ta), this.localParam(i, tb))
+    res.reversed.len = res.curves.len
     return res.toOwnedCurve2
 
 
@@ -495,6 +495,31 @@ when isMainModule:
     let owned = contour.toCurve2.cut(0.2.FloatParam, 0.9.FloatParam)
     assert owned.isOf(Path2)
     assert owned.pointAtParam(0).distanceTo(contour.pointAtParam(0.2.FloatParam)) < 1e-9
+
+  print "\n\n--- Path: cut spanning multiple sub-curves (no reversed) ---"
+
+  block:
+    # an open, non-reversed 3-curve path (line, arc, line) — the shape produced
+    # by the construction API (e.g. a vertical wall, a fillet, a horizontal wall).
+    # cuts spanning sub-curve boundaries (and reaching the very end, b == 1) must
+    # keep every endpoint on the path and not collapse a spanned sub-curve.
+    var path = Path2(curves: @[
+      lineSection(point2(0, 0), point2(0, 3)).toOwnedCurve2,
+      circleArc(point2(1, 3), 1, Pi, Pi / 2, clockwise).toOwnedCurve2,
+      lineSection(point2(1, 4), point2(4, 4)).toOwnedCurve2,
+    ])
+    path.reversed.len = path.curves.len
+    assert path.curves.len == 3
+    assert path.isContinuous
+
+    for (a, b) in [(0.0, 1.0), (0.0, 0.7), (0.4, 1.0), (0.2, 0.9), (0.9, 0.2)]:
+      let piece = path.cut(a.FloatParam, b.FloatParam)
+      assert piece.pointAtParam(0).distanceTo(path.pointAtParam(a.FloatParam)) < 1e-9
+      assert piece.pointAtParam(1).distanceTo(path.pointAtParam(b.FloatParam)) < 1e-9
+      assert piece.length > 1e-9  # spanning cuts are not degenerate
+      if piece.isOf(Path2):
+        for i in 0..<piece.castTo(Path2).curves.len - 1:
+          assert piece.castTo(Path2).pointAtCurve(i, 1).distanceTo(piece.castTo(Path2).pointAtCurve(i + 1, 0)) < 1e-9
 
   echo "ok"
 
