@@ -59,12 +59,23 @@ proc insert*(bm: var Bitmask, v: bool, i = 0) =
 
 
 proc del*(bm: var Bitmask, i: int) =
-  if i >= bm.len:
+  if i notin 0..<bm.len:
     discard
   elif i == bm.high:
     dec bm.len
   else:
     bm[i] = bm[^1]
+    dec bm.len
+
+
+proc delete*(bm: var Bitmask, i: int) =
+  if i notin 0..<bm.len:
+    discard
+  elif i == bm.high:
+    dec bm.len
+  else:
+    for i2 in countdown(bm.len - 2, i):
+      bm[i2] = bm[i2 + 1]
     dec bm.len
 
 

@@ -14,6 +14,8 @@ when sigeo_backend == SigeoOpencascade:
     proc derAtParam(this; param: FloatParam): V2
     proc bounds(this; a: FloatParam, b: FloatParam): Bounds2
     proc cut(this; a: FloatParam, b: FloatParam): OwnedCurve2
+    proc `$`(this;): string
+
     proc toOpencascadeShape(this;): TopoDS_Shape
 
 
@@ -24,6 +26,7 @@ else:
     proc derAtParam(this; param: FloatParam): V2
     proc bounds(this; a: FloatParam, b: FloatParam): Bounds2
     proc cut(this; a: FloatParam, b: FloatParam): OwnedCurve2
+    proc `$`(this;): string
 
 
 proc bounds*(curve: Curve2): Bounds2 =
@@ -46,4 +49,8 @@ proc toOwnedCurve2*(c: Curve2): OwnedCurve2 =
   assert c.obj != nil
   result.vtable = c.vtable
   c.vtable.dup(c.obj, result.obj)
+
+
+proc `$`*(c: OwnedCurve2): string =
+  `$`(c.Curve2)
 

@@ -3,7 +3,7 @@ import ../macros/[interfaces, cursors]
 import ./[icurve2, lineSection, circleArc]
 
 when sigeo_backend == SigeoOpencascade:
-  import ./[lineSection, circleArc, ellipseArc]
+  import ./[ellipseArc]
   import pkg/opencascade
 
 when sigeo_backend == SigeoC3d:
@@ -11,10 +11,36 @@ when sigeo_backend == SigeoC3d:
 
 
 type
+  Path2_BuildPoint_Kind = enum
+    StartPoint
+    BevelPoint
+    FilletPoint
+
+  Path2_BuildPoint = object
+    ## helper "Curve2" type for temporary use for Path2 building
+    pos: Point2
+    kind: Path2_BuildPoint_Kind
+    radius: Float
+  
+  Path2_X = distinct ptr Path2
+  Path2_Y = distinct ptr Path2
+
   Path2* = object
     ## continuous sequence of curves
     curves*: seq[OwnedCurve2]
-    reversed*: Bitmask
+    reversed*: Bitmask  # todo: remove, use cut instead
+
+
+Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Declare)
+
+proc length(this: Path2_BuildPoint;): Float = 0
+proc pointAtParam(this: Path2_BuildPoint; param: FloatParam): Point2 = this.pos
+proc derAtParam(this: Path2_BuildPoint; param: FloatParam): V2 = v2(1, 0)
+proc bounds(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): Bounds2 = bounds2(this.pos)
+proc cut(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): OwnedCurve2 = this.toOwnedCurve2
+
+Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Implement)
+
 
 
 Curve2.implementInterfaceFor(Path2, fwd = Declare)
@@ -144,11 +170,8 @@ proc makeNotReversed*(this: var Path2, i: int) =
     this.reversed[i] = false
 
 
-
-proc close*(this: var Path2) =
-  if not this.isClosed:
-    this.curves.add lineSection(this.pointAtParam(1), this.pointAtParam(0)).toOwnedCurve2
-    this.reversed.len = this.curves.len
+proc insertBevel*(this: var Path2, radius: Float, c1i = this.curves.len - 2)
+proc insertFillet*(this: var Path2, radius: Float, c1i = this.curves.len - 2)
 
 
 proc add*(this: var Path2, c: Curve2) =
@@ -158,12 +181,17 @@ proc add*(this: var Path2, c: Curve2) =
     this.reversed.len = this.curves.len
     return
   
+  var bp: Path2_BuildPoint
+
   let p =
-    if this.curves.len == 1 and this.curves[0].isOf(LineSection2) and this.curves[0].castTo(LineSection2).length ~== 0:
-      let p = this.curves[0].castTo(LineSection2).startPoint
-      this.curves.setLen 0
-      this.reversed.len = 0
-      p
+    if this.curves.len != 0 and this.curves[^1].isOf(Path2_BuildPoint):
+      bp = this.curves[^1].castTo(Path2_BuildPoint)
+      if this.curves.len == 1 and bp.kind != StartPoint:
+        discard
+      else:
+        this.curves.setLen this.curves.len - 1
+        this.reversed.len = this.curves.len
+      bp.pos
     else:
       this.pointAtParam(1)
   
@@ -177,25 +205,72 @@ proc add*(this: var Path2, c: Curve2) =
     this.curves.add lineSection(p, c.pointAtParam(0)).toOwnedCurve2
     this.curves.add c.toOwnedCurve2
     this.reversed.len = this.curves.len
+  
+  if (this.curves.len - (if this.curves[0].isOf(Path2_BuildPoint): 1 else: 0)) < 2 and bp.kind != StartPoint:
+    discard
+  else:
+    if bp.kind == BevelPoint:
+      this.insertBevel(bp.radius)
+    elif bp.kind == FilletPoint:
+      this.insertFillet(bp.radius)
+  
+  if this.curves.len >= 2 and this.isClosed and this.curves[0].isOf(Path2_BuildPoint):
+    let bp = this.curves[0].castTo(Path2_BuildPoint)
+    this.curves.delete 0
+    this.reversed.delete 0
+    if bp.kind == BevelPoint:
+      this.insertBevel(bp.radius, this.curves.high)
+    elif bp.kind == FilletPoint:
+      this.insertFillet(bp.radius, this.curves.high)
+
 
 
 proc add*(this: var Path2, p: Point2) =
-  this.curves.add lineSection(if this.curves.len == 0: p else: this.pointAtParam(1), p).toOwnedCurve2
-  this.reversed.len = this.curves.len
+  if this.curves.len == 0:
+    this.curves.add Path2_BuildPoint(pos: p, kind: StartPoint).toOwnedCurve2
+    this.reversed.len = this.curves.len
+  else:
+    this.add lineSection(this.pointAtParam(1), p).toOwnedCurve2
+
+
+proc close*(this: var Path2) =
+  if not this.isClosed:
+    this.add this.pointAtParam(0)
+
+
+proc add*(this: var Path2, v: V2) =
+  this.add this.pointAtParam(1) + v
+
+
+proc bevel*(this: var Path2, radius: Float) =
+  if this.curves.len != 0 and this.curves[^1].isOf(Path2_BuildPoint):
+    this.curves[^1].castTo(Path2_BuildPoint) = Path2_BuildPoint(pos: this.pointAtParam(1), kind: BevelPoint, radius: radius)
+  else:
+    this.curves.add Path2_BuildPoint(pos: this.pointAtParam(1), kind: BevelPoint, radius: radius).toOwnedCurve2
+
+
+proc fillet*(this: var Path2, radius: Float) =
+  if this.curves.len != 0 and this.curves[^1].isOf(Path2_BuildPoint):
+    this.curves[^1].castTo(Path2_BuildPoint) = Path2_BuildPoint(pos: this.pointAtParam(1), kind: FilletPoint, radius: radius)
+  else:
+    this.curves.add Path2_BuildPoint(pos: this.pointAtParam(1), kind: FilletPoint, radius: radius).toOwnedCurve2
+
 
 # todo: proc addArc*(this: var Path2, p: Point2)
 
 
-proc addBevel*(this: var Path2, radius: Float) =
-  ## adds bevel between 2 last added curves
+proc insertBevel*(this: var Path2, radius: Float, c1i = this.curves.len - 2) =
+  ## adds bevel between curve `c1i` and the next curve.
+  ## if `c1i` == this.curves.high, then the next curve is this.curves[0]
   assert this.curves.len >= 2
+  let c2i = (c1i + 1) mod this.curves.len
 
-  if this.curves[^2].isOf(LineSection2) and this.curves[^1].isOf(LineSection2):
-    let betweenI = this.curves.len - 1
-    this.makeNotReversed this.curves.len-2
-    this.makeNotReversed this.curves.len-1
-    letCur c1: this.curves[^2].castTo(LineSection2)
-    letCur c2: this.curves[^1].castTo(LineSection2)
+  if this.curves[c1i].isOf(LineSection2) and this.curves[c2i].isOf(LineSection2):
+    let betweenI = c1i + 1
+    this.makeNotReversed c1i
+    this.makeNotReversed c2i
+    letCur c1: this.curves[c1i].castTo(LineSection2)
+    letCur c2: this.curves[c2i].castTo(LineSection2)
     let p1 = c1.endPoint - c1.direction * radius
     let p2 = c2.startPoint + c2.direction * radius
     c1 = c1.cut(0, c1.paramAtPoint(p1))
@@ -207,16 +282,18 @@ proc addBevel*(this: var Path2, radius: Float) =
     raise ValueError.newException("not implemented")
 
 
-proc addFillet*(this: var Path2, radius: Float) =
-  ## adds circular arc fillet between 2 last added curves
+proc insertFillet*(this: var Path2, radius: Float, c1i = this.curves.len - 2) =
+  ## adds circular arc fillet between curve `c1i` and the next curve.
+  ## if `c1i` == this.curves.high, then the next curve is this.curves[0]
   assert this.curves.len >= 2
+  let c2i = (c1i + 1) mod this.curves.len
 
-  if this.curves[^2].isOf(LineSection2) and this.curves[^1].isOf(LineSection2):
-    let betweenI = this.curves.len - 1
-    this.makeNotReversed this.curves.len-2
-    this.makeNotReversed this.curves.len-1
-    letCur c1: this.curves[^2].castTo(LineSection2)
-    letCur c2: this.curves[^1].castTo(LineSection2)
+  if this.curves[c1i].isOf(LineSection2) and this.curves[c2i].isOf(LineSection2):
+    let betweenI = c1i + 1
+    this.makeNotReversed c1i
+    this.makeNotReversed c2i
+    letCur c1: this.curves[c1i].castTo(LineSection2)
+    letCur c2: this.curves[c2i].castTo(LineSection2)
     let d1 = c1.direction
     let d2 = c2.direction
     let p1 = c1.endPoint - d1 * radius
@@ -235,6 +312,38 @@ proc addFillet*(this: var Path2, radius: Float) =
   else:
     raise ValueError.newException("not implemented")
 
+
+proc addBevel*(this: var Path2, radius: Float) {.deprecated: "use bevel or insertBevel instead".} =
+  this.insertBevel(radius)
+
+proc addFillet*(this: var Path2, radius: Float) {.deprecated: "use fillet or insertFillet instead".} =
+  this.insertFillet(radius)
+
+
+
+proc at*(this: Path2): Point2 = this.pointAtParam(1)
+proc i*(this: Path2): int = this.curves.len
+
+proc point*(this: Path2, i: int): Point2 =
+  if i >= this.curves.len: this.pointAtParam(1)
+  else: this.pointAtCurve(i, 0)
+
+
+proc `x=`*(this: var Path2, v: Float) =
+  this.add p2(v, this.pointAtParam(1).y)
+
+proc `y=`*(this: var Path2, v: Float) =
+  this.add p2(this.pointAtParam(1).x, v)
+
+
+proc `x`*(this: var Path2): Path2_X = Path2_X this.addr
+proc `y`*(this: var Path2): Path2_Y = Path2_Y this.addr
+
+proc `+=`*(this: Path2_X, v: Float) =
+  (ptr Path2)(this)[].add v2(v, 0)
+
+proc `+=`*(this: Path2_Y, v: Float) =
+  (ptr Path2)(this)[].add v2(0, v)
 
 
 when sigeo_backend == SigeoOpencascade:
@@ -300,7 +409,6 @@ Curve2.implementInterfaceFor(Path2, fwd = Implement)
 
 when isMainModule:
   import print
-  import ./[lineSection, circleArc]
 
   proc numDer(c: Curve2, t: FloatParam, eps = 1e-6): V2 =
     (c.pointAtParam((t.Float + eps).FloatParam) - c.pointAtParam((t.Float - eps).FloatParam)) / (2 * eps)
