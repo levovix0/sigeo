@@ -146,23 +146,32 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
 
   result = nnkStmtList.newTree(typeSection)
 
-  # OwnedXxx lifecycle hooks
+
+  # --- OwnedXxx lifecycle hooks ---
+
+  # =destroy
   result.add mkProc(
     nnkAccQuoted.newTree(ident"=destroy"),
     @[newEmptyNode(), newIdentDefs(ident"this", ownedName)],
     newStmtList(
       nnkIfStmt.newTree(nnkElifBranch.newTree(
-        nnkInfix.newTree(ident("!="), dot("this", "obj"), newNilLit()),
+        nnkInfix.newTree(ident("!="), dot("this", "obj"), newNilLit()),  # nil guard
         callThrough("this", "destroy", @[dot("this", "obj")])
       ))
     )
   )
+  
+  # =trace
   result.add mkProc(
     nnkAccQuoted.newTree(ident"=trace"),
-    @[newEmptyNode(), newIdentDefs(ident"this", nnkVarTy.newTree(ownedName)),
-      newIdentDefs(ident"env", ident"pointer")],
+    @[
+      newEmptyNode(),
+      newIdentDefs(ident"this", nnkVarTy.newTree(ownedName)),
+      newIdentDefs(ident"env", ident"pointer")
+    ],
     newStmtList(callThrough("this", "trace", @[dot("this", "obj"), ident"env"]))
   )
+  
   # =copy: destroy this, then dup from other (source) into this (dest)
   result.add mkProc(
     nnkAccQuoted.newTree(ident"=copy"),
@@ -170,12 +179,12 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
       newIdentDefs(ident"other", ownedName)],
     newStmtList(
       nnkIfStmt.newTree(nnkElifBranch.newTree(
-        nnkInfix.newTree(ident("!="), dot("this", "obj"), newNilLit()),
+        nnkInfix.newTree(ident("!="), dot("this", "obj"), newNilLit()),  # nil guard
         callThrough("this", "destroy", @[dot("this", "obj")])
       )),
       nnkIfStmt.newTree(
         nnkElifBranch.newTree(
-          nnkInfix.newTree(ident("!="), dot("other", "obj"), newNilLit()),
+          nnkInfix.newTree(ident("!="), dot("other", "obj"), newNilLit()),  # nil guard
           newStmtList(
             callThrough("other", "dup", @[dot("other", "obj"), dot("this", "obj")]),
             nnkAsgn.newTree(dot("this", "vtable"), dot("other", "vtable"))
@@ -188,6 +197,7 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
       )
     )
   )
+
   # =dup: set vtable, then dup from this (source) into result (dest)
   result.add mkProc(
     nnkAccQuoted.newTree(ident"=dup"),
@@ -197,6 +207,7 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
       callThrough("this", "dup", @[dot("this", "obj"), dot("result", "obj")])
     )
   )
+
   # =sink: destroy this, move from other (source) into this (dest), update vtable
   result.add mkProc(
     nnkAccQuoted.newTree(ident"=sink"),
@@ -204,7 +215,7 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
       newIdentDefs(ident"other", ownedName)],
     newStmtList(
       nnkIfStmt.newTree(nnkElifBranch.newTree(
-        nnkInfix.newTree(ident("!="), dot("this", "obj"), newNilLit()),
+        nnkInfix.newTree(ident("!="), dot("this", "obj"), newNilLit()),  # nil guard
         callThrough("this", "destroy", @[dot("this", "obj")])
       )),
       callThrough("other", "sink", @[dot("other", "obj"), dot("this", "obj")]),
