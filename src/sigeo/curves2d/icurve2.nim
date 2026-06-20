@@ -8,9 +8,12 @@ when sigeo_backend == SigeoOpencascade:
 
 
 makeInterface Curve2:
+  # note that aliases are defined as a part of interface, to force that same aliases are defined for concrete curves (for consistency)
   proc length(this;): Float
-  proc pointAtParam(this; param: FloatParam): Point2
-  proc derAtParam(this; param: FloatParam): V2
+  proc pointAt(this; param: FloatParam): Point2
+  proc pointAtParam(this; param: FloatParam): Point2  # (alias for pointAt)
+  proc derAt(this; param: FloatParam): V2
+  proc derAtParam(this; param: FloatParam): V2  # (alias for derAt)
 
   proc bounds(this; a: FloatParam, b: FloatParam): Bounds2
   proc cut(this; a: FloatParam, b: FloatParam): OwnedCurve2
@@ -29,9 +32,13 @@ proc bounds*(curve: Curve2): Bounds2 =
   curve.bounds(0.FloatParam, 1.FloatParam)
 
 
+proc reverse*(this: Curve2): OwnedCurve2 =
+  this.cut(1, 0)
+
+
 proc points*(arc: Curve2, count: int = 32): seq[Point2] =
   for i in 0..count:
-    result.add arc.pointAtParam(i / count)
+    result.add arc.pointAt(i / count)
 
 
 proc view*(curves {.byref.}: seq[OwnedCurve2]): lent seq[Curve2] =

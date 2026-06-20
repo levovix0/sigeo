@@ -50,7 +50,7 @@ test "curves2d transform":
     let t = c.transform(m)
     for i in 0..20:
       let p = (i / 20).FloatParam
-      check t.pointAtParam(p).distanceTo(c.pointAtParam(p).transform(m)) < 1e-9
+      check t.pointAt(p).distanceTo(c.pointAt(p).transform(m)) < 1e-9
 
   let curves = @[
     lineSection(point2(1, 2), point2(4, -1)).toOwnedCurve2,
@@ -92,19 +92,19 @@ test "OwnedCurve2 copy into fresh/empty/valid slots":
   block: # copy into a fresh var
     var dst: OwnedCurve2
     dst = src
-    check dst.pointAtParam(1.FloatParam) ~== point2(1, 1)
+    check dst.pointAt(1.FloatParam) ~== point2(1, 1)
 
   block: # copy into a fresh seq slot
     var s: seq[OwnedCurve2]
     s.setLen 1
     s[0] = src
-    check s[0].pointAtParam(1.FloatParam) ~== point2(1, 1)
+    check s[0].pointAt(1.FloatParam) ~== point2(1, 1)
 
   block: # deep copy — mutating the source must not affect the copy
     var a = lineSection(point2(0, 0), point2(1, 1)).toOwnedCurve2
     let b = a
     a.castTo(LineSection2).endPoint = point2(9, 9)
-    check b.pointAtParam(1.FloatParam) ~== point2(1, 1)
+    check b.pointAt(1.FloatParam) ~== point2(1, 1)
 
   block: # copy an empty source over a valid destination clears it
     var empty: OwnedCurve2

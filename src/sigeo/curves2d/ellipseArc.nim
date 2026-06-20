@@ -130,11 +130,11 @@ proc angleAtParam*(curve: EllipseArc2, t: FloatParam): Float {.inline.} =
 proc pointAtAngle(curve: EllipseArc2, angle: Float): Point2 {.inline.} =
   curve.center + v2(curve.size.x / 2 * cos(angle), curve.size.y / 2 * sin(angle)).rotate(curve.rotation)
 
-proc pointAtParam*(curve: EllipseArc2, t: FloatParam): Point2 =
+proc pointAt*(curve: EllipseArc2, t: FloatParam): Point2 {.aliases: [pointAtParam].} =
   curve.pointAtAngle(curve.angleAtParam(t))
 
 
-proc derAtParam*(curve: EllipseArc2, t: FloatParam): V2 =
+proc derAt*(curve: EllipseArc2, t: FloatParam): V2 {.aliases: [derAtParam].} =
   let angLen = curve.angularLength
   let angle = curve.angleAtParam(t)
   (angLen * v2(-curve.size.x / 2 * sin(angle), curve.size.y / 2 * cos(angle))).rotate(curve.rotation)
@@ -142,7 +142,7 @@ proc derAtParam*(curve: EllipseArc2, t: FloatParam): V2 =
 
 proc cut*(curve: EllipseArc2, a, b: FloatParam): EllipseArc2 =
   ## returns the part of the arc between params `a` and `b`, such that
-  ## `result.pointAtParam(t) == curve.pointAtParam(a + t * (b - a))`
+  ## `result.pointAt(t) == curve.pointAt(a + t * (b - a))`
   ## if `a > b`, the resulting arc goes backwards along the original arc
   let angLen = curve.angularLength
   let sweep = angLen * (b.Float - a.Float)
@@ -229,13 +229,13 @@ when isMainModule:
   block:
     # rotation: point at parametric angle 0 is at center + rotated x semi-axis
     let arc = ellipseArc(point2(1, 1), v2(4, 2), rotation = Pi/2)
-    doAssert arc.pointAtParam(0).distanceTo(point2(1, 1) + v2(0, 2)) < 1e-9
+    doAssert arc.pointAt(0).distanceTo(point2(1, 1) + v2(0, 2)) < 1e-9
     let arc2 = ellipseArc(point2(0, 0), v2(4, 2), xAxis = v2(0, 3))
-    doAssert arc2.pointAtParam(0).distanceTo(point2(0, 2)) < 1e-9
+    doAssert arc2.pointAt(0).distanceTo(point2(0, 2)) < 1e-9
   echo "rotation ok"
 
   block:
-    # cut invariant: cut(a, b).pointAtParam(t) == original.pointAtParam(a + t * (b - a))
+    # cut invariant: cut(a, b).pointAt(t) == original.pointAt(a + t * (b - a))
     for dir in [counterclockwise, clockwise]:
       for rotation in [0.0, Pi/6, -2*Pi/3]:
         for (sa, ea) in [(0.0, 0.0), (Pi/2, Pi), (Pi, Pi/2), (-3*Pi/4, Pi/4)]:
@@ -243,8 +243,8 @@ when isMainModule:
           for (a, b) in [(0.0, 1.0), (0.25, 0.75), (0.75, 0.25), (0.9, 0.1), (1.0, 0.0)]:
             let c = arc.cut(a, b)
             for t in [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]:
-              let got = c.pointAtParam(t)
-              let expected = arc.pointAtParam(a + t * (b - a))
+              let got = c.pointAt(t)
+              let expected = arc.pointAt(a + t * (b - a))
               doAssert got.distanceTo(expected) < 1e-9,
                 "cut mismatch: dir=" & $dir & " rotation=" & $rotation &
                 " sa=" & $sa & " ea=" & $ea & " a=" & $a & " b=" & $b & " t=" & $t
@@ -258,7 +258,7 @@ when isMainModule:
           let arc = ellipseArc(point2(1, 2), v2(6, 2), sa, ea, dir, rotation)
           for t in [0.1, 0.4, 0.9]:
             const eps = 1e-6
-            let numeric = (arc.pointAtParam(t + eps) - arc.pointAtParam(t - eps)) / (2 * eps)
+            let numeric = (arc.pointAt(t + eps) - arc.pointAt(t - eps)) / (2 * eps)
             doAssert (arc.derAtParam(t) - numeric).length < 1e-5,
               "der mismatch: dir=" & $dir & " rotation=" & $rotation & " sa=" & $sa & " ea=" & $ea & " t=" & $t
   echo "derAtParam ok"
@@ -270,10 +270,10 @@ when isMainModule:
         for (a, b) in [(0.0, 1.0), (0.1, 0.7)]:
           let arc = ellipseArc(point2(1, 2), v2(6, 2), sa, ea, rotation = rotation)
           let bb = arc.bounds(a, b)
-          var sampled = bounds2(arc.pointAtParam(a))
+          var sampled = bounds2(arc.pointAt(a))
           const n = 2000
           for i in 0..n:
-            let p = arc.pointAtParam(a + i / n * (b - a))
+            let p = arc.pointAt(a + i / n * (b - a))
             doAssert bb.contains(p, 1e-9), "point outside bounds: rotation=" & $rotation
             sampled.add p
           doAssert sampled.min.distanceTo(bb.min) < 1e-3, "bounds not tight"

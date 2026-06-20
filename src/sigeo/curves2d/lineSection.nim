@@ -42,11 +42,11 @@ proc toVec*(line: LineSection2): V2 =
   line.endPoint - line.startPoint
 
 
-proc pointAtParam*(line: LineSection2, param: FloatParam): Point2 =
+proc pointAt*(line: LineSection2, param: FloatParam): Point2 {.aliases: [pointAtParam].} =
   line.startPoint + (line.endPoint - line.startPoint) * param
 
 
-proc derAtParam*(line: LineSection2, param: FloatParam): V2 {.inline.} =
+proc derAt*(line: LineSection2, param: FloatParam): V2 {.inline, aliases: [derAtParam].} =
   line.toVec
 
 
@@ -58,8 +58,8 @@ proc paramLength*(line: LineSection2): Float {.deprecated: "always 1".} =
   1
 
 
-proc paramAtPoint*(line: LineSection2, point: Point2): FloatParam =
-  ## returns arbitrary number `t` such that line.pointAtParam(`t`) returns `point`
+proc paramAt*(line: LineSection2, point: Point2): FloatParam {.aliases: [paramAtPoint].} =
+  ## returns arbitrary number `t` such that line.pointAt(`t`) returns `point`
   ## assumes that `point` is on line
   let v = (line.endPoint - line.startPoint)
   if abs(v.x) > abs(v.y):
@@ -106,14 +106,14 @@ proc almostEqual*(lineA, lineB: LineSection2): bool {.aliases: [`~==`].} =
 
 
 proc cut*(curve: LineSection2, a, b: FloatParam): LineSection2 =
-  LineSection2(startPoint: curve.pointAtParam(a), endPoint: curve.pointAtParam(b))
+  LineSection2(startPoint: curve.pointAt(a), endPoint: curve.pointAt(b))
 
 proc reverse*(curve: LineSection2): LineSection2 {.inline.} = curve.cut(1, 0)
 
 
 proc bounds*(line: LineSection2, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the line section between params `a` and `b`
-  bounds2(line.pointAtParam(a), line.pointAtParam(b))
+  bounds2(line.pointAt(a), line.pointAt(b))
 
 
 

@@ -1,5 +1,7 @@
 import ../macros/[genAliases]
-import ./[vectors, points]
+import ../core/[vectors, points]
+
+{.deprecated: "this module is deprecated".}
 
 type
   Ray3* = object

@@ -48,12 +48,12 @@ proc `[]`*(this: Path2, i: int|BackwardsIndex): Curve2 {.inline.} =
 
 proc pointAtCurve*(this: Path2, curve: int|BackwardsIndex, param: FloatParam): Point2 {.inline.} =
   if this.reversed[curve]:
-    this[curve].pointAtParam(1 - param)
+    this[curve].pointAt(1 - param)
   else:
-    this[curve].pointAtParam(param)
+    this[curve].pointAt(param)
 
 
-proc pointAtParam*(this: Path2; param: FloatParam): Point2 =
+proc pointAt*(this: Path2; param: FloatParam): Point2 {.aliases: [pointAtParam].} =
   assert this.curves.len != 0, "empty contour"
   if classify(param) != fcNormal: return this.pointAtCurve(0, 0)
   if param <= 0: return this.pointAtCurve(0, 0)
@@ -71,7 +71,7 @@ proc isContinuous*(c: Path2): bool =
   true
 
 proc isClosed*(c: Path2): bool =
-  return c.pointAtParam(0) ~== c.pointAtParam(1)
+  return c.pointAt(0) ~== c.pointAt(1)
 
 
 proc derAtCurve*(this: Path2, curve: int|BackwardsIndex, param: FloatParam): V2 {.inline.} =
@@ -81,8 +81,8 @@ proc derAtCurve*(this: Path2, curve: int|BackwardsIndex, param: FloatParam): V2 
     this[curve].derAtParam(param)
 
 
-proc derAtParam*(this: Path2; param: FloatParam): V2 =
-  ## derivative of `pointAtParam` with respect to the contour param
+proc derAt*(this: Path2; param: FloatParam): V2 {.aliases: [derAtParam].} =
+  ## derivative of `pointAt` with respect to the contour param
   assert this.curves.len != 0, "empty contour"
   let n = this.curves.len.Float
   if classify(param) != fcNormal: return this.derAtCurve(0, 0) * n
@@ -95,6 +95,7 @@ proc derAtParam*(this: Path2; param: FloatParam): V2 =
 proc approxSignedArea*(this: Path2, samplesPerCurve = 32): Float =
   ## approximate signed area enclosed by the contour, computed from a polyline approximation.
   ## positive if the contour is counterclockwise in coordinate space
+  ## ! assumes contour is closed and is convex
   for i in 0..<this.curves.len:
     var prev = this.pointAtCurve(i, 0)
     for j in 1..samplesPerCurve:
@@ -158,8 +159,8 @@ proc cut*(this: Path2, a, b: FloatParam): OwnedCurve2 =
 Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Declare)
 
 proc length(this: Path2_BuildPoint;): Float = 0
-proc pointAtParam(this: Path2_BuildPoint; param: FloatParam): Point2 = this.pos
-proc derAtParam(this: Path2_BuildPoint; param: FloatParam): V2 = v2(1, 0)
+proc pointAt(this: Path2_BuildPoint; param: FloatParam): Point2 {.aliases: [pointAtParam].} = this.pos
+proc derAt(this: Path2_BuildPoint; param: FloatParam): V2 {.aliases: [derAtParam].} = v2(1, 0)
 proc bounds(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): Bounds2 = bounds2(this.pos)
 proc cut(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): OwnedCurve2 = this.toOwnedCurve2
 proc transform(this: Path2_BuildPoint; m: M4): Path2_BuildPoint {.aliases: [`*`].} =
@@ -202,16 +203,16 @@ proc add*(this: var Path2, c: Curve2) =
         this.reversed.len = this.curves.len
       bp.pos
     else:
-      this.pointAtParam(1)
+      this.pointAt(1)
   
-  if p ~== c.pointAtParam(0):
+  if p ~== c.pointAt(0):
     this.curves.add c.toOwnedCurve2
     this.reversed.len = this.curves.len
-  elif p ~== c.pointAtParam(1):
+  elif p ~== c.pointAt(1):
     this.curves.add c.toOwnedCurve2
     this.reversed[this.curves.high] = true
   else:
-    this.curves.add lineSection(p, c.pointAtParam(0)).toOwnedCurve2
+    this.curves.add lineSection(p, c.pointAt(0)).toOwnedCurve2
     this.curves.add c.toOwnedCurve2
     this.reversed.len = this.curves.len
   
@@ -239,30 +240,30 @@ proc add*(this: var Path2, p: Point2) =
     this.curves.add Path2_BuildPoint(pos: p, kind: StartPoint).toOwnedCurve2
     this.reversed.len = this.curves.len
   else:
-    this.add lineSection(this.pointAtParam(1), p).toOwnedCurve2
+    this.add lineSection(this.pointAt(1), p).toOwnedCurve2
 
 
 proc close*(this: var Path2) =
   if not this.isClosed:
-    this.add this.pointAtParam(0)
+    this.add this.pointAt(0)
 
 
 proc add*(this: var Path2, v: V2) =
-  this.add this.pointAtParam(1) + v
+  this.add this.pointAt(1) + v
 
 
 proc bevel*(this: var Path2, radius: Float) =
   if this.curves.len != 0 and this.curves[^1].isOf(Path2_BuildPoint):
-    this.curves[^1].castTo(Path2_BuildPoint) = Path2_BuildPoint(pos: this.pointAtParam(1), kind: BevelPoint, radius: radius)
+    this.curves[^1].castTo(Path2_BuildPoint) = Path2_BuildPoint(pos: this.pointAt(1), kind: BevelPoint, radius: radius)
   else:
-    this.curves.add Path2_BuildPoint(pos: this.pointAtParam(1), kind: BevelPoint, radius: radius).toOwnedCurve2
+    this.curves.add Path2_BuildPoint(pos: this.pointAt(1), kind: BevelPoint, radius: radius).toOwnedCurve2
 
 
 proc fillet*(this: var Path2, radius: Float) =
   if this.curves.len != 0 and this.curves[^1].isOf(Path2_BuildPoint):
-    this.curves[^1].castTo(Path2_BuildPoint) = Path2_BuildPoint(pos: this.pointAtParam(1), kind: FilletPoint, radius: radius)
+    this.curves[^1].castTo(Path2_BuildPoint) = Path2_BuildPoint(pos: this.pointAt(1), kind: FilletPoint, radius: radius)
   else:
-    this.curves.add Path2_BuildPoint(pos: this.pointAtParam(1), kind: FilletPoint, radius: radius).toOwnedCurve2
+    this.curves.add Path2_BuildPoint(pos: this.pointAt(1), kind: FilletPoint, radius: radius).toOwnedCurve2
 
 
 # todo: proc addArc*(this: var Path2, p: Point2)
@@ -332,19 +333,19 @@ proc addFillet*(this: var Path2, radius: Float) {.deprecated: "use fillet or ins
 
 # --- opinionated path construction API extension ---
 
-proc at*(this: Path2): Point2 = this.pointAtParam(1)
+proc at*(this: Path2): Point2 = this.pointAt(1)
 proc i*(this: Path2): int = this.curves.len
 
 proc point*(this: Path2, i: int): Point2 =
-  if i >= this.curves.len: this.pointAtParam(1)
+  if i >= this.curves.len: this.pointAt(1)
   else: this.pointAtCurve(i, 0)
 
 
 proc `x=`*(this: var Path2, v: Float) =
-  this.add p2(v, this.pointAtParam(1).y)
+  this.add p2(v, this.pointAt(1).y)
 
 proc `y=`*(this: var Path2, v: Float) =
-  this.add p2(this.pointAtParam(1).x, v)
+  this.add p2(this.pointAt(1).x, v)
 
 
 proc `x`*(this: var Path2): Path2_X = Path2_X this.addr
@@ -441,7 +442,7 @@ when isMainModule:
   import print
 
   proc numDer(c: Curve2, t: FloatParam, eps = 1e-6): V2 =
-    (c.pointAtParam((t.Float + eps).FloatParam) - c.pointAtParam((t.Float - eps).FloatParam)) / (2 * eps)
+    (c.pointAt((t.Float + eps).FloatParam) - c.pointAt((t.Float - eps).FloatParam)) / (2 * eps)
 
   print "\n\n--- derAtParam matches finite differences ---"
 
@@ -460,8 +461,8 @@ when isMainModule:
     let line = lineSection(point2(0, 0), point2(2, 2))
     let piece = line.toCurve2.cut(0.25.FloatParam, 0.75.FloatParam)
     assert piece.isOf(LineSection2)
-    assert piece.pointAtParam(0).distanceTo(point2(0.5, 0.5)) < 1e-9
-    assert piece.pointAtParam(1).distanceTo(point2(1.5, 1.5)) < 1e-9
+    assert piece.pointAt(0).distanceTo(point2(0.5, 0.5)) < 1e-9
+    assert piece.pointAt(1).distanceTo(point2(1.5, 1.5)) < 1e-9
 
   print "\n\n--- Contour: cut and derAtParam ---"
 
@@ -484,8 +485,8 @@ when isMainModule:
 
     for (a, b) in [(0.2, 0.9), (0.9, 0.2), (0.5, 5/6)]:
       let piece = contour.cut(a.FloatParam, b.FloatParam)
-      assert piece.pointAtParam(0).distanceTo(contour.pointAtParam(a.FloatParam)) < 1e-9
-      assert piece.pointAtParam(1).distanceTo(contour.pointAtParam(b.FloatParam)) < 1e-9
+      assert piece.pointAt(0).distanceTo(contour.pointAt(a.FloatParam)) < 1e-9
+      assert piece.pointAt(1).distanceTo(contour.pointAt(b.FloatParam)) < 1e-9
       # pieces stay continuous
       assert piece.isOf(Path2)
       for i in 0..<piece.castTo(Path2).curves.len - 1:
@@ -494,7 +495,7 @@ when isMainModule:
     # a contour is itself a Curve2, so it can be cut through the interface
     let owned = contour.toCurve2.cut(0.2.FloatParam, 0.9.FloatParam)
     assert owned.isOf(Path2)
-    assert owned.pointAtParam(0).distanceTo(contour.pointAtParam(0.2.FloatParam)) < 1e-9
+    assert owned.pointAt(0).distanceTo(contour.pointAt(0.2.FloatParam)) < 1e-9
 
   print "\n\n--- Path: cut spanning multiple sub-curves (no reversed) ---"
 
@@ -514,8 +515,8 @@ when isMainModule:
 
     for (a, b) in [(0.0, 1.0), (0.0, 0.7), (0.4, 1.0), (0.2, 0.9), (0.9, 0.2)]:
       let piece = path.cut(a.FloatParam, b.FloatParam)
-      assert piece.pointAtParam(0).distanceTo(path.pointAtParam(a.FloatParam)) < 1e-9
-      assert piece.pointAtParam(1).distanceTo(path.pointAtParam(b.FloatParam)) < 1e-9
+      assert piece.pointAt(0).distanceTo(path.pointAt(a.FloatParam)) < 1e-9
+      assert piece.pointAt(1).distanceTo(path.pointAt(b.FloatParam)) < 1e-9
       assert piece.length > 1e-9  # spanning cuts are not degenerate
       if piece.isOf(Path2):
         for i in 0..<piece.castTo(Path2).curves.len - 1:

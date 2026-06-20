@@ -400,13 +400,13 @@ proc rotate*(v: V2, angle_rad: Float): V2 =
   v * cos(angle_rad) + v2(-v.y, v.x) * sin(angle_rad)
 
 
-proc rotate_90deg_counterClockwise*(v: V2): V2 {.aliases: [rotate_90deg_left, rot90l, rot90cc].} =
+proc rot90cc*(v: V2): V2 {.aliases: [rotate_90deg_counterClockwise].} =
   if sigeo_axisY_up:
     v2(v.y, -v.x)
   else:
     v2(-v.y, v.x)
 
-proc rotate_90deg_clockwise*(v: V2): V2 {.aliases: [rotate_90deg_right, rot90r, rot90c].} =
+proc rot90c*(v: V2): V2 {.aliases: [rotate_90deg_clockwise].} =
   if sigeo_axisY_up:
     v2(-v.y, v.x)
   else:

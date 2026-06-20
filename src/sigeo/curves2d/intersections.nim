@@ -1,7 +1,6 @@
 import std/[options]
 import ../core/[vectors, points]
 import ./[lineSection, circleArc]
-import ../macros/[genAnyOrder]
 
 
 type
@@ -36,13 +35,15 @@ template wrapIntersectionToReturnSeq(t1, t2) =
 
 
 
+# todo: this is complex to understand and to use API, use seq instead, not worth the pre-optimization
+
 template maxIntersectionPoints*(a, b: LineSection2): int =
   1
 
 template maxIntersectionPoints*(a, b: CircleArc2): int =
   2
 
-template maxIntersectionPoints*(a: LineSection2, b: CircleArc2): int {.anyOrder.} =
+template maxIntersectionPoints*(a: LineSection2, b: CircleArc2): int =
   2
 
 
@@ -52,7 +53,7 @@ template maxIntersectionSegments*(a, b: LineSection2): int =
 template maxIntersectionSegments*(a, b: CircleArc2): int =
   2
 
-template maxIntersectionSegments*(a: LineSection2, b: CircleArc2): int {.anyOrder.} =
+template maxIntersectionSegments*(a: LineSection2, b: CircleArc2): int =
   0
 
 
@@ -294,7 +295,7 @@ when isMainModule:
       lineSection(point2(2, 2), point2(1, 3)),
     )
     print points
-    print curveA.pointAtParam(points[0].curveA) ~== (curveA.startPoint + (curveA.endPoint - curveA.startPoint) / 2)
+    print curveA.pointAt(points[0].curveA) ~== (curveA.startPoint + (curveA.endPoint - curveA.startPoint) / 2)
 
   block:
     print intersectionPointsParams(
@@ -335,8 +336,8 @@ when isMainModule:
       arc,
     )
     print pts
-    print arc.pointAtParam(pts[0].curveB)  # aroud (-sqrt(0.75), 0.5)
-    print arc.pointAtParam(pts[1].curveB)  # aroud ( sqrt(0.75), 0.5)
+    print arc.pointAt(pts[0].curveB)  # aroud (-sqrt(0.75), 0.5)
+    print arc.pointAt(pts[1].curveB)  # aroud ( sqrt(0.75), 0.5)
 
   block:
     let arc = circleArc(point2(0, 0), 1, 0, PI / 2)

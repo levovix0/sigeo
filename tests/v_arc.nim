@@ -79,5 +79,5 @@ app.run proc(ctx: DrawContext) =
       ctx.drawPolyline(arc.points(nPoints), cellColor, thickness = 1.5)
 
       # mark start point (green) and end point (red)
-      ctx.drawDot(arc.pointAtParam(0), color(0.2, 1.0, 0.4), radius = 2.5)
-      ctx.drawDot(arc.pointAtParam(1), color(1.0, 0.2, 0.3), radius = 2.0)
+      ctx.drawDot(arc.pointAt(0), color(0.2, 1.0, 0.4), radius = 2.5)
+      ctx.drawDot(arc.pointAt(1), color(1.0, 0.2, 0.3), radius = 2.0)

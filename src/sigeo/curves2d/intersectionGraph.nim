@@ -6,9 +6,10 @@ import ./[icurve2, lineSection, circleArc, intersections]
 
 ## Efficient intersection finding for many curves of different kinds, with a given precision.
 ##
-## The result is represented as a graph:
-##  - verts are points where curves intersect (or start/end), each vert knows all (curve, param)
-##    pairs that map to its position
+## allIntersections() finds all intersection points.
+##
+## buildIntersectionGraph() is built on top of allIntersections for more convinient API:
+##  - verts are points where curves intersect (or start/end), each vert knows all (curve, param) pairs that map to its position
 ##  - edges are pieces of curves between adjacent verts, directed in the increasing param direction
 
 
@@ -110,7 +111,7 @@ proc genericIntersectionPointsParams*(
     # on closed curves params near 0 and near 1 map to the same point,
     # producing clusters that are far in param space but spatially identical — drop those
     let p: FloatParam2 = (curveA: mid.a.FloatParam, curveB: mid.b.FloatParam)
-    let pos = curveA.pointAtParam(p.curveA)
+    let pos = curveA.pointAt(p.curveA)
     block addIfNotDuplicate:
       for other in positions:
         if other.distanceTo(pos) <= 4 * tolerance:
@@ -233,7 +234,7 @@ proc buildIntersectionGraph*(
     # create verts and edges
     var nodeIds = newSeq[int](merged.len)
     for j, t in merged:
-      nodeIds[j] = vertAt(result, grid, result.curves[i].pointAtParam(t.FloatParam))
+      nodeIds[j] = vertAt(result, grid, result.curves[i].pointAt(t.FloatParam))
       result.verts[nodeIds[j]].curvePoints.add (curve: i, param: t.FloatParam)
 
     for j in 0..<merged.len - 1:
@@ -265,7 +266,7 @@ proc otherNode*(edge: GraphEdge, vert: int): int =
 proc pointOnEdge*(graph: CurveGraph, edge: int, t: FloatParam): Point2 =
   ## point on the edge's curve piece, t = 0 is the edge's start vert, t = 1 is the end vert
   let e = graph.edges[edge]
-  graph.curves[e.curve].pointAtParam(
+  graph.curves[e.curve].pointAt(
     (e.startParam.Float + t.Float * (e.endParam.Float - e.startParam.Float)).FloatParam
   )
 
@@ -330,8 +331,8 @@ when isMainModule:
     let pts = genericIntersectionPointsParams(a.toCurve2, b.toCurve2, 1e-9)
     print pts
     for p in pts:
-      print a.pointAtParam(p.curveA)  # around (0.5, ±sqrt(3)/2)
-      assert a.pointAtParam(p.curveA).distanceTo(b.pointAtParam(p.curveB)) < 1e-8
+      print a.pointAt(p.curveA)  # around (0.5, ±sqrt(3)/2)
+      assert a.pointAt(p.curveA).distanceTo(b.pointAt(p.curveB)) < 1e-8
 
   print "\n\n--- generic intersection: LineSection2 <-> EllipseArc2 ---"
 
@@ -341,8 +342,8 @@ when isMainModule:
     let pts = genericIntersectionPointsParams(line.toCurve2, ellipse.toCurve2, 1e-9)
     print pts
     for p in pts:
-      print line.pointAtParam(p.curveA)  # (±1.5, 0)
-      assert line.pointAtParam(p.curveA).distanceTo(ellipse.pointAtParam(p.curveB)) < 1e-8
+      print line.pointAt(p.curveA)  # (±1.5, 0)
+      assert line.pointAt(p.curveA).distanceTo(ellipse.pointAt(p.curveB)) < 1e-8
 
   print "\n\n--- dispatch to analytic intersection ---"
 

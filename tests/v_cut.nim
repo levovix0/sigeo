@@ -7,7 +7,7 @@
 ## In every cell:
 ##  - grey      = the original curve
 ##  - orange    = the cut piece (slightly thicker, drawn over the original)
-##  - yellow dots = original.pointAtParam(a + t*(b-a)) samples — must lie exactly on the orange path
+##  - yellow dots = original.pointAt(a + t*(b-a)) samples — must lie exactly on the orange path
 ##  - green/red dot = start/end of the cut piece — must be at original params a/b
 ##  - teal rect = bounds of the cut piece — must tightly wrap the orange path
 
@@ -55,14 +55,14 @@ proc makeCell[C](curve: C, a, b: Float): Cell =
   let cutCurve = curve.cut(a, b)
 
   for i in 0..nPoints:
-    result.origPts.add curve.pointAtParam(i / nPoints)
-    result.cutPts.add cutCurve.pointAtParam(i / nPoints)
+    result.origPts.add curve.pointAt(i / nPoints)
+    result.cutPts.add cutCurve.pointAt(i / nPoints)
 
   for i in 0..16:
-    result.samplePts.add curve.pointAtParam(a + i / 16 * (b - a))
+    result.samplePts.add curve.pointAt(a + i / 16 * (b - a))
 
-  result.cutStart = cutCurve.pointAtParam(0)
-  result.cutEnd = cutCurve.pointAtParam(1)
+  result.cutStart = cutCurve.pointAt(0)
+  result.cutEnd = cutCurve.pointAt(1)
   result.cutBounds = cutCurve.bounds(0, 1)
 
 
