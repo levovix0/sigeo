@@ -29,7 +29,6 @@ type
   Path2* = object
     ## continuous sequence of curves
     curves*: seq[OwnedCurve2]
-    reversed*: Bitmask  # todo: remove, use cut instead
 
 
 
@@ -47,10 +46,7 @@ proc `[]`*(this: Path2, i: int|BackwardsIndex): Curve2 {.inline.} =
 
 
 proc pointAtCurve*(this: Path2, curve: int|BackwardsIndex, param: FloatParam): Point2 {.inline.} =
-  if this.reversed[curve]:
-    this[curve].pointAt(1 - param)
-  else:
-    this[curve].pointAt(param)
+  this[curve].pointAt(param)
 
 
 proc pointAt*(this: Path2; param: FloatParam): Point2 {.aliases: [pointAtParam].} =
@@ -75,10 +71,7 @@ proc isClosed*(c: Path2): bool =
 
 
 proc derAtCurve*(this: Path2, curve: int|BackwardsIndex, param: FloatParam): V2 {.inline.} =
-  if this.reversed[curve]:
-    -this[curve].derAtParam(1 - param)
-  else:
-    this[curve].derAtParam(param)
+  this[curve].derAtParam(param)
 
 
 proc derAt*(this: Path2; param: FloatParam): V2 {.aliases: [derAtParam].} =
@@ -116,10 +109,8 @@ proc bounds*(this: Path2, a, b: FloatParam): Bounds2 =
 
   result = bounds2(this.pointAtCurve(i0, clamp(ta - i0.Float, 0, 1)))
   for i in i0..i1:
-    var la = clamp(ta - i.Float, 0, 1)
-    var lb = clamp(tb - i.Float, 0, 1)
-    if this.reversed[i]:
-      (la, lb) = (1 - lb, 1 - la)
+    let la = clamp(ta - i.Float, 0, 1)
+    let lb = clamp(tb - i.Float, 0, 1)
     result.add this[i].bounds(la.FloatParam, lb.FloatParam)
 
 
@@ -130,26 +121,23 @@ proc cut*(this: Path2, a, b: FloatParam): OwnedCurve2 =
   let ta = a.Float.clamp(0, 1) * n.Float
   let tb = b.Float.clamp(0, 1) * n.Float
 
-  proc localParam(this: Path2, curve: int, t: Float): FloatParam =
-    let lp = (t - curve.Float).clamp(0, 1)
-    if this.reversed[curve]: (1 - lp).FloatParam else: lp.FloatParam
+  proc localParam(curve: int, t: Float): FloatParam =
+    (t - curve.Float).clamp(0, 1).FloatParam
 
   let ia = clamp(int(ta), 0, n - 1)
   let ib = clamp(int(tb), 0, n - 1)
 
   if ia == ib:
-    return this[ia].cut(this.localParam(ia, ta), this.localParam(ib, tb))
+    return this[ia].cut(localParam(ia, ta), localParam(ib, tb))
   elif ta < tb:
     var res: Path2
     for i in countup(ia, ib):
-      res.curves.add this[i].cut(this.localParam(i, ta), this.localParam(i, tb))
-    res.reversed.len = res.curves.len
+      res.curves.add this[i].cut(localParam(i, ta), localParam(i, tb))
     return res.toOwnedCurve2
   else:
     var res: Path2
     for i in countdown(ia, ib):
-      res.curves.add this[i].cut(this.localParam(i, ta), this.localParam(i, tb))
-    res.reversed.len = res.curves.len
+      res.curves.add this[i].cut(localParam(i, ta), localParam(i, tb))
     return res.toOwnedCurve2
 
 
@@ -173,13 +161,6 @@ when sigeo_backend == SigeoOpencascade:
 Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Implement)
 
 
-proc makeNotReversed*(this: var Path2, i: int) =
-  if i notin 0..this.curves.high: return
-  if this.reversed[i]:
-    this.curves[i] = this.curves[i].cut(1, 0)
-    this.reversed[i] = false
-
-
 proc insertBevel*(this: var Path2, radius: Float, c1i = this.curves.len - 2)
 proc insertFillet*(this: var Path2, radius: Float, c1i = this.curves.len - 2)
 
@@ -188,9 +169,8 @@ proc add*(this: var Path2, c: Curve2) =
   ## adds a curve to path. If curve does not start or end at path end, adds a line section to start of the added curve
   if this.curves.len == 0:
     this.curves.add c.toOwnedCurve2
-    this.reversed.len = this.curves.len
     return
-  
+
   var bp: Path2_BuildPoint
 
   let p =
@@ -200,21 +180,17 @@ proc add*(this: var Path2, c: Curve2) =
         discard
       else:
         this.curves.setLen this.curves.len - 1
-        this.reversed.len = this.curves.len
       bp.pos
     else:
       this.pointAt(1)
-  
+
   if p ~== c.pointAt(0):
     this.curves.add c.toOwnedCurve2
-    this.reversed.len = this.curves.len
   elif p ~== c.pointAt(1):
-    this.curves.add c.toOwnedCurve2
-    this.reversed[this.curves.high] = true
+    this.curves.add c.reverse
   else:
     this.curves.add lineSection(p, c.pointAt(0)).toOwnedCurve2
     this.curves.add c.toOwnedCurve2
-    this.reversed.len = this.curves.len
   
   if (this.curves.len - (if this.curves[0].isOf(Path2_BuildPoint): 1 else: 0)) < 2 and bp.kind != StartPoint:
     discard
@@ -227,7 +203,6 @@ proc add*(this: var Path2, c: Curve2) =
   if this.curves.len >= 2 and this.isClosed and this.curves[0].isOf(Path2_BuildPoint):
     let bp = this.curves[0].castTo(Path2_BuildPoint)
     this.curves.delete 0
-    this.reversed.delete 0
     if bp.kind == BevelPoint:
       this.insertBevel(bp.radius, this.curves.high)
     elif bp.kind == FilletPoint:
@@ -238,18 +213,16 @@ proc add*(this: var Path2, c: Curve2) =
 proc add*(this: var Path2, p: Point2) =
   if this.curves.len == 0:
     this.curves.add Path2_BuildPoint(pos: p, kind: StartPoint).toOwnedCurve2
-    this.reversed.len = this.curves.len
   else:
     this.add lineSection(this.pointAt(1), p).toOwnedCurve2
+
+proc add*(this: var Path2, v: V2) =
+  this.add this.pointAt(1) + v
 
 
 proc close*(this: var Path2) =
   if not this.isClosed:
     this.add this.pointAt(0)
-
-
-proc add*(this: var Path2, v: V2) =
-  this.add this.pointAt(1) + v
 
 
 proc bevel*(this: var Path2, radius: Float) =
@@ -258,15 +231,11 @@ proc bevel*(this: var Path2, radius: Float) =
   else:
     this.curves.add Path2_BuildPoint(pos: this.pointAt(1), kind: BevelPoint, radius: radius).toOwnedCurve2
 
-
 proc fillet*(this: var Path2, radius: Float) =
   if this.curves.len != 0 and this.curves[^1].isOf(Path2_BuildPoint):
     this.curves[^1].castTo(Path2_BuildPoint) = Path2_BuildPoint(pos: this.pointAt(1), kind: FilletPoint, radius: radius)
   else:
     this.curves.add Path2_BuildPoint(pos: this.pointAt(1), kind: FilletPoint, radius: radius).toOwnedCurve2
-
-
-# todo: proc addArc*(this: var Path2, p: Point2)
 
 
 proc insertBevel*(this: var Path2, radius: Float, c1i = this.curves.len - 2) =
@@ -277,8 +246,6 @@ proc insertBevel*(this: var Path2, radius: Float, c1i = this.curves.len - 2) =
 
   if this.curves[c1i].isOf(LineSection2) and this.curves[c2i].isOf(LineSection2):
     let betweenI = c1i + 1
-    this.makeNotReversed c1i
-    this.makeNotReversed c2i
     letCur c1: this.curves[c1i].castTo(LineSection2)
     letCur c2: this.curves[c2i].castTo(LineSection2)
     let p1 = c1.endPoint - c1.direction * radius
@@ -286,8 +253,7 @@ proc insertBevel*(this: var Path2, radius: Float, c1i = this.curves.len - 2) =
     c1 = c1.cut(0, c1.paramAtPoint(p1))
     c2 = c2.cut(c2.paramAtPoint(p2), 1)
     this.curves.insert lineSection(p1, p2).toOwnedCurve2, betweenI
-    this.reversed.insert false, betweenI
-  
+
   else:
     raise ValueError.newException("not implemented")
 
@@ -300,8 +266,6 @@ proc insertFillet*(this: var Path2, radius: Float, c1i = this.curves.len - 2) =
 
   if this.curves[c1i].isOf(LineSection2) and this.curves[c2i].isOf(LineSection2):
     let betweenI = c1i + 1
-    this.makeNotReversed c1i
-    this.makeNotReversed c2i
     letCur c1: this.curves[c1i].castTo(LineSection2)
     letCur c2: this.curves[c2i].castTo(LineSection2)
     let d1 = c1.direction
@@ -317,17 +281,9 @@ proc insertFillet*(this: var Path2, radius: Float, c1i = this.curves.len - 2) =
     let endAngle = (p2 - center).planarAngle
     let direction = if (turnSign > 0) == sigeo_axisY_up: counterclockwise else: clockwise
     this.curves.insert circleArc(center, radius, startAngle, endAngle, direction).toOwnedCurve2, betweenI
-    this.reversed.insert false, betweenI
 
   else:
     raise ValueError.newException("not implemented")
-
-
-proc addBevel*(this: var Path2, radius: Float) {.deprecated: "use bevel or insertBevel instead".} =
-  this.insertBevel(radius)
-
-proc addFillet*(this: var Path2, radius: Float) {.deprecated: "use fillet or insertFillet instead".} =
-  this.insertFillet(radius)
 
 
 
@@ -424,11 +380,10 @@ when sigeo_backend == SigeoOpencascade:
 
 proc transform*(this: Path2, m: M4): Path2 {.aliases: [`*`].} =
   ## returns a curve with 4x4 transformation matrix applied.
-  ## traversal order and the `reversed` flags are preserved
+  ## traversal order is preserved
   result.curves = newSeq[OwnedCurve2](this.curves.len)
   for i in 0 ..< this.curves.len:
     result.curves[i] = this.curves.view[i].transform(m)
-  result.reversed = this.reversed
 
 
 Curve2.implementInterfaceFor(Path2, fwd = Implement)
@@ -467,13 +422,12 @@ when isMainModule:
   print "\n\n--- Contour: cut and derAtParam ---"
 
   block:
-    # a triangle with the second side stored reversed
+    # a triangle
     var contour = Path2(curves: @[
       lineSection(point2(0, 0), point2(2, 0)).toOwnedCurve2,
-      lineSection(point2(2, 2), point2(2, 0)).toOwnedCurve2,
+      lineSection(point2(2, 0), point2(2, 2)).toOwnedCurve2,
       lineSection(point2(2, 2), point2(0, 0)).toOwnedCurve2,
     ])
-    contour.reversed[1] = true
 
     # traversal is continuous
     for i in 0..<contour.curves.len:
@@ -497,10 +451,10 @@ when isMainModule:
     assert owned.isOf(Path2)
     assert owned.pointAt(0).distanceTo(contour.pointAt(0.2.FloatParam)) < 1e-9
 
-  print "\n\n--- Path: cut spanning multiple sub-curves (no reversed) ---"
+  print "\n\n--- Path: cut spanning multiple sub-curves ---"
 
   block:
-    # an open, non-reversed 3-curve path (line, arc, line) — the shape produced
+    # an open 3-curve path (line, arc, line) — the shape produced
     # by the construction API (e.g. a vertical wall, a fillet, a horizontal wall).
     # cuts spanning sub-curve boundaries (and reaching the very end, b == 1) must
     # keep every endpoint on the path and not collapse a spanned sub-curve.
@@ -509,7 +463,6 @@ when isMainModule:
       circleArc(point2(1, 3), 1, Pi, Pi / 2, clockwise).toOwnedCurve2,
       lineSection(point2(1, 4), point2(4, 4)).toOwnedCurve2,
     ])
-    path.reversed.len = path.curves.len
     assert path.curves.len == 3
     assert path.isContinuous
 
