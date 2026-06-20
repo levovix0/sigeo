@@ -15,7 +15,7 @@ type
   LineSection* {.deprecated: "renamed to LineSection2".} = LineSection2
 
 
-proc lineSection2*(startPoint, endPoint: Point2): LineSection2 {.aliases: [lineSection, line].} =
+func lineSection2*(startPoint, endPoint: Point2): LineSection2 {.aliases: [lineSection, line].} =
   if startPoint ~== endPoint:
     when defined(sigeo_return_small_curve_when_costructed_curve_has_zero_length):
       return LineSection2(
@@ -32,33 +32,33 @@ proc lineSection2*(startPoint, endPoint: Point2): LineSection2 {.aliases: [lineS
   )
   
 
-proc a*(line: LineSection2): Point2 = line.startPoint
-proc b*(line: LineSection2): Point2 = line.endPoint
+func a*(line: LineSection2): Point2 = line.startPoint
+func b*(line: LineSection2): Point2 = line.endPoint
 
 
 
-proc toVec*(line: LineSection2): V2 =
+func toVec*(line: LineSection2): V2 =
   ## retruns vector from start point to end point
   line.endPoint - line.startPoint
 
 
-proc pointAt*(line: LineSection2, param: FloatParam): Point2 {.aliases: [pointAtParam].} =
+func pointAt*(line: LineSection2, param: FloatParam): Point2 {.aliases: [pointAtParam].} =
   line.startPoint + (line.endPoint - line.startPoint) * param
 
 
-proc derAt*(line: LineSection2, param: FloatParam): V2 {.inline, aliases: [derAtParam].} =
+func derAt*(line: LineSection2, param: FloatParam): V2 {.inline, aliases: [derAtParam].} =
   line.toVec
 
 
-proc length*(line: LineSection2): Float =
+func length*(line: LineSection2): Float =
   (line.endPoint - line.startPoint).length
 
 
-proc paramLength*(line: LineSection2): Float {.deprecated: "always 1".} =
+func paramLength*(line: LineSection2): Float {.deprecated: "always 1".} =
   1
 
 
-proc paramAt*(line: LineSection2, point: Point2): FloatParam {.aliases: [paramAtPoint].} =
+func paramAt*(line: LineSection2, point: Point2): FloatParam {.aliases: [paramAtPoint].} =
   ## returns arbitrary number `t` such that line.pointAt(`t`) returns `point`
   ## assumes that `point` is on line
   let v = (line.endPoint - line.startPoint)
@@ -68,56 +68,56 @@ proc paramAt*(line: LineSection2, point: Point2): FloatParam {.aliases: [paramAt
     FloatParam (point.y - line.startPoint.y) / v.y
 
 
-proc direction*(line: LineSection2): V2 =
+func direction*(line: LineSection2): V2 =
   line.toVec.normalize
 
-proc center*(line: LineSection2): Point2 =
+func center*(line: LineSection2): Point2 =
   line.startPoint + (line.endPoint - line.startPoint) / 2
 
 
-proc fastHasPoint*(line: LineSection2, point: Point2): bool =
+func fastHasPoint*(line: LineSection2, point: Point2): bool =
   ## returns true if `point` is on line section, assuming point is on line
   let p = line.paramAtPoint(point).Float
   p.almostEqualOrGreater(0) and p.almostEqualOrLess(1)
 
-proc hasPoint*(line: LineSection2, point: Point2): bool =
+func hasPoint*(line: LineSection2, point: Point2): bool =
   ## returns true if `point` is on line section
   let avy = (line.endPoint - line.startPoint).rotate_90deg_counterClockwise
   if not((point - line.startPoint).dot(avy) ~== 0): return false
   line.fastHasPoint(point)
 
 
-proc isParallel*(lineA, lineB: LineSection2): bool =
+func isParallel*(lineA, lineB: LineSection2): bool =
   lineA.toVec.isParallel(lineB.toVec)
 
-proc isPerpendicular*(lineA, lineB: LineSection2): bool =
+func isPerpendicular*(lineA, lineB: LineSection2): bool =
   lineA.toVec.isPerpendicular(lineB.toVec)
 
-proc isCollinear*(lineA, lineB: LineSection2): bool =
+func isCollinear*(lineA, lineB: LineSection2): bool =
   let avy = lineA.toVec.rotate_90deg_counterClockwise
   (lineB.startPoint - lineA.startPoint).dot(avy) ~== 0 and
   (lineB.endPoint - lineA.startPoint).dot(avy) ~== 0
 
 
-proc almostEqual*(lineA, lineB: LineSection2): bool {.aliases: [`~==`].} =
+func almostEqual*(lineA, lineB: LineSection2): bool {.aliases: [`~==`].} =
   lineA.startPoint.almostEqual(lineB.startPoint) and lineA.endPoint.almostEqual(lineB.endPoint) or
   lineA.startPoint.almostEqual(lineB.endPoint) and lineA.endPoint.almostEqual(lineB.startPoint)
 
 
 
-proc cut*(curve: LineSection2, a, b: FloatParam): LineSection2 =
+func cut*(curve: LineSection2, a, b: FloatParam): LineSection2 =
   LineSection2(startPoint: curve.pointAt(a), endPoint: curve.pointAt(b))
 
-proc reverse*(curve: LineSection2): LineSection2 {.inline.} = curve.cut(1, 0)
+func reverse*(curve: LineSection2): LineSection2 {.inline.} = curve.cut(1, 0)
 
 
-proc bounds*(line: LineSection2, a, b: FloatParam): Bounds2 =
+func bounds*(line: LineSection2, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the line section between params `a` and `b`
   bounds2(line.pointAt(a), line.pointAt(b))
 
 
 
-proc transform*(line: LineSection2, m: M4): LineSection2 {.aliases: [`*`].} =
+func transform*(line: LineSection2, m: M4): LineSection2 {.aliases: [`*`].} =
   ## returns a line with 4x4 transformation matrix applied.
   lineSection2(line.startPoint.transform(m), line.endPoint.transform(m))
 

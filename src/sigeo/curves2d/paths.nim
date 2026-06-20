@@ -146,12 +146,12 @@ proc cut*(this: Path2, a, b: FloatParam): OwnedCurve2 =
 
 Curve2.implementInterfaceFor(Path2_BuildPoint, fwd = Declare)
 
-proc length(this: Path2_BuildPoint;): Float = 0
-proc pointAt(this: Path2_BuildPoint; param: FloatParam): Point2 {.aliases: [pointAtParam].} = this.pos
-proc derAt(this: Path2_BuildPoint; param: FloatParam): V2 {.aliases: [derAtParam].} = v2(1, 0)
-proc bounds(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): Bounds2 = bounds2(this.pos)
+func length(this: Path2_BuildPoint;): Float = 0
+func pointAt(this: Path2_BuildPoint; param: FloatParam): Point2 {.aliases: [pointAtParam].} = this.pos
+func derAt(this: Path2_BuildPoint; param: FloatParam): V2 {.aliases: [derAtParam].} = v2(1, 0)
+func bounds(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): Bounds2 = bounds2(this.pos)
 proc cut(this: Path2_BuildPoint; a: FloatParam, b: FloatParam): OwnedCurve2 = this.toOwnedCurve2
-proc transform(this: Path2_BuildPoint; m: M4): Path2_BuildPoint {.aliases: [`*`].} =
+func transform(this: Path2_BuildPoint; m: M4): Path2_BuildPoint {.aliases: [`*`].} =
   result = this
   result.pos = this.pos.transform(m)
 

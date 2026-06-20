@@ -21,12 +21,12 @@ type
   CircleArc* {.deprecated: "renamed to CircleArc2".} = CircleArc2
 
 
-proc adjustToPrecision*(circle: var CircleArc2) =
+func adjustToPrecision*(circle: var CircleArc2) =
   if circle.startAngle.almostEqual(circle.endAngle):
     circle.startAngle = circle.endAngle
 
 
-proc circleArc2*(
+func circleArc2*(
   center: Point2, radius: Float,
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise
@@ -49,20 +49,20 @@ proc circleArc2*(
   adjustToPrecision(result)
 
 
-proc fullCircle*(circle: CircleArc2): bool {.aliases: [closed, isCircle, isFullCircle, isClosed].} =
+func fullCircle*(circle: CircleArc2): bool {.aliases: [closed, isCircle, isFullCircle, isClosed].} =
   ## returns true if arc is full circle
-  ## requires `circle` to be constructed via `circleArc` proc or be adjusted via `adjustToPrecision` proc
+  ## requires `circle` to be constructed via `circleArc` func or be adjusted via `adjustToPrecision` func
   circle.startAngle == circle.endAngle
 
 
-proc startPoint*(circle: CircleArc2): Point2 =
+func startPoint*(circle: CircleArc2): Point2 =
   circle.center + circle.radius * v2(cos(circle.startAngle), sin(circle.startAngle))
 
-proc endPoint*(circle: CircleArc2): Point2 =
+func endPoint*(circle: CircleArc2): Point2 =
   circle.center + circle.radius * v2(cos(circle.endAngle), sin(circle.endAngle))
 
 
-proc angularLength*(circle: CircleArc2): Float =
+func angularLength*(circle: CircleArc2): Float =
   ## returns signed angular sweep of the arc in radians, `Pi*2` for full circle
   if circle.fullCircle:
     if (circle.direction == counterclockwise) == sigeo_axisY_up: 2 * Pi
@@ -75,22 +75,22 @@ proc angularLength*(circle: CircleArc2): Float =
       if diff >= 0: diff - 2 * Pi else: diff
 
 
-proc length*(circle: CircleArc2): Float {.inline.} =
+func length*(circle: CircleArc2): Float {.inline.} =
   abs(circle.angularLength) * circle.radius
 
 
-proc pointAt*(curve: CircleArc2, t: FloatParam): Point2 {.aliases: [pointAtParam].} =
+func pointAt*(curve: CircleArc2, t: FloatParam): Point2 {.aliases: [pointAtParam].} =
   let angle = curve.startAngle + t * curve.angularLength
   curve.center + curve.radius * v2(cos(angle), sin(angle))
 
 
-proc derAtParam*(curve: CircleArc2, t: FloatParam): V2 {.aliases: [derAt].} =
+func derAtParam*(curve: CircleArc2, t: FloatParam): V2 {.aliases: [derAt].} =
   let angLen = curve.angularLength
   let angle = curve.startAngle + t * angLen
   curve.radius * angLen * v2(-sin(angle), cos(angle))
 
 
-proc paramAt*(circle: CircleArc2, point: Point2): FloatParam {.aliases: [paramAtPoint].} =
+func paramAt*(circle: CircleArc2, point: Point2): FloatParam {.aliases: [paramAtPoint].} =
   ## returns arbitrary number `t` such that circle.pointAt(`t`) returns `point`
   ## assumes that `point` is on circle arc
   let v = point - circle.center
@@ -99,7 +99,7 @@ proc paramAt*(circle: CircleArc2, point: Point2): FloatParam {.aliases: [paramAt
 
 
 
-proc cut*(curve: CircleArc2, a, b: FloatParam): CircleArc2 =
+func cut*(curve: CircleArc2, a, b: FloatParam): CircleArc2 =
   ## returns the part of the arc between params `a` and `b`, such that
   ## `result.pointAt(t) == curve.pointAt(a + t * (b - a))`
   ## if `a > b`, the resulting arc goes backwards along the original arc
@@ -114,15 +114,15 @@ proc cut*(curve: CircleArc2, a, b: FloatParam): CircleArc2 =
   )
 
 
-proc invertDir*(curve: CircleArc2): CircleArc2 =
+func invertDir*(curve: CircleArc2): CircleArc2 =
   result = curve
   result.direction = (if curve.direction == clockwise: counterclockwise else: clockwise)
 
-proc reverse*(curve: CircleArc2): CircleArc2 {.inline.} = curve.cut(1, 0)
+func reverse*(curve: CircleArc2): CircleArc2 {.inline.} = curve.cut(1, 0)
 
 
 
-proc bounds*(curve: CircleArc2, a, b: FloatParam): Bounds2 =
+func bounds*(curve: CircleArc2, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the arc between params `a` and `b`
   let angLen = curve.angularLength
   let ang0 = curve.startAngle + a.Float * angLen
@@ -144,7 +144,7 @@ proc bounds*(curve: CircleArc2, a, b: FloatParam): Bounds2 =
 
 
 
-proc transform*(curve: CircleArc2, m: M4): CircleArc2 {.aliases: [`*`].} =
+func transform*(curve: CircleArc2, m: M4): CircleArc2 {.aliases: [`*`].} =
   ## returns a curve with 4x4 transformation matrix applied.
   ## assumes the matrix scales uniformly, so a circle stays a circle
   let scale = hypot(m[0, 0], m[0, 1])  # length of the transformed x axis

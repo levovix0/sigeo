@@ -25,7 +25,7 @@ type
   EllipseArc* {.deprecated: "renamed to EllipseArc2".} = EllipseArc2
 
 
-proc ellipseArc2*(
+func ellipseArc2*(
   center: Point2, size: V2,
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise,
@@ -39,7 +39,7 @@ proc ellipseArc2*(
   )
 
 
-proc ellipseArc2*(
+func ellipseArc2*(
   center: Point2, size: V2, xAxis: V2,
   startAngle: Float = 0, endAngle: Float = 0,
   direction: AngleDirection = counterclockwise,
@@ -48,16 +48,16 @@ proc ellipseArc2*(
   ellipseArc(center, size, startAngle, endAngle, direction, rotation = xAxis.signedAngleToPlusX)
 
 
-proc xAxis*(arc: EllipseArc2): V2 =
+func xAxis*(arc: EllipseArc2): V2 =
   ## direction of the ellipse's own x axis
   v2(cos(arc.rotation), sin(arc.rotation))
 
 
-proc fullEllipse*(arc: EllipseArc2): bool {.inline.} =
+func fullEllipse*(arc: EllipseArc2): bool {.inline.} =
   arc.startAngle == arc.endAngle
 
 
-proc angularLength*(arc: EllipseArc2): Float =
+func angularLength*(arc: EllipseArc2): Float =
   ## returns signed angular sweep of the arc in radians, `Pi*2` for full ellipse
   if arc.fullEllipse:
     if (arc.direction == counterclockwise) == sigeo_axisY_up: 2 * Pi
@@ -102,7 +102,7 @@ const gl16Nodes   = gl16[0]
 const gl16Weights = gl16[1]
 
 
-proc length*(arc: EllipseArc2): Float =
+func length*(arc: EllipseArc2): Float =
   ## arc length via 16-point Gauss-Legendre quadrature
   ## integrand: ds/dθ = √(rx^2 * sin(θ)^2 + ry^2 * cos(θ)^2)
   let rx = arc.size.x / 2
@@ -124,23 +124,23 @@ proc length*(arc: EllipseArc2): Float =
   abs(half) * sum
 
 
-proc angleAtParam*(curve: EllipseArc2, t: FloatParam): Float {.inline.} =
+func angleAtParam*(curve: EllipseArc2, t: FloatParam): Float {.inline.} =
   curve.startAngle + t * curve.angularLength
 
-proc pointAtAngle(curve: EllipseArc2, angle: Float): Point2 {.inline.} =
+func pointAtAngle(curve: EllipseArc2, angle: Float): Point2 {.inline.} =
   curve.center + v2(curve.size.x / 2 * cos(angle), curve.size.y / 2 * sin(angle)).rotate(curve.rotation)
 
-proc pointAt*(curve: EllipseArc2, t: FloatParam): Point2 {.aliases: [pointAtParam].} =
+func pointAt*(curve: EllipseArc2, t: FloatParam): Point2 {.aliases: [pointAtParam].} =
   curve.pointAtAngle(curve.angleAtParam(t))
 
 
-proc derAt*(curve: EllipseArc2, t: FloatParam): V2 {.aliases: [derAtParam].} =
+func derAt*(curve: EllipseArc2, t: FloatParam): V2 {.aliases: [derAtParam].} =
   let angLen = curve.angularLength
   let angle = curve.angleAtParam(t)
   (angLen * v2(-curve.size.x / 2 * sin(angle), curve.size.y / 2 * cos(angle))).rotate(curve.rotation)
 
 
-proc cut*(curve: EllipseArc2, a, b: FloatParam): EllipseArc2 =
+func cut*(curve: EllipseArc2, a, b: FloatParam): EllipseArc2 =
   ## returns the part of the arc between params `a` and `b`, such that
   ## `result.pointAt(t) == curve.pointAt(a + t * (b - a))`
   ## if `a > b`, the resulting arc goes backwards along the original arc
@@ -156,15 +156,15 @@ proc cut*(curve: EllipseArc2, a, b: FloatParam): EllipseArc2 =
   )
 
 
-proc invertDir*(curve: EllipseArc2): EllipseArc2 =
+func invertDir*(curve: EllipseArc2): EllipseArc2 =
   result = curve
   result.direction = (if curve.direction == clockwise: counterclockwise else: clockwise)
 
-proc reverse*(curve: EllipseArc2): EllipseArc2 {.inline.} = curve.cut(1, 0)
+func reverse*(curve: EllipseArc2): EllipseArc2 {.inline.} = curve.cut(1, 0)
 
 
 
-proc bounds*(curve: EllipseArc2, a, b: FloatParam): Bounds2 =
+func bounds*(curve: EllipseArc2, a, b: FloatParam): Bounds2 =
   ## bounding box of the part of the arc between params `a` and `b`
   let rx = curve.size.x / 2
   let ry = curve.size.y / 2
@@ -188,7 +188,7 @@ proc bounds*(curve: EllipseArc2, a, b: FloatParam): Bounds2 =
       k += 1
 
 
-proc transform*(curve: EllipseArc2, m: M4): EllipseArc2 {.aliases: [`*`].} =
+func transform*(curve: EllipseArc2, m: M4): EllipseArc2 {.aliases: [`*`].} =
   ## returns a curve with 4x4 transformation matrix applied.
   ## assumes the matrix scales uniformly, so the ellipse keeps its aspect ratio
   let scale = hypot(m[0, 0], m[0, 1])  # length of the transformed x axis
