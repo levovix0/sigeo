@@ -45,10 +45,12 @@ proc center*(box: Bounds2): Point2 =
 
 
 proc expanded*(box: Bounds2, amount: Float): Bounds2 =
-  Bounds2(min: box.min - v2(amount, amount), max: box.max + v2(amount, amount))
+  if box.empty: return box
+  Bounds2(empty: false, min: box.min - v2(amount, amount), max: box.max + v2(amount, amount))
 
 proc expanded*(box: Bounds2, margin: V2): Bounds2 =
-  Bounds2(min: box.min - margin, max: box.max + margin)
+  if box.empty: return box
+  Bounds2(empty: false, min: box.min - margin, max: box.max + margin)
 
 
 proc overlaps*(a, b: Bounds2, tolerance: Float = epsilon(Float)): bool =
