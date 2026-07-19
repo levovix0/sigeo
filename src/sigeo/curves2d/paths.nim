@@ -213,6 +213,8 @@ proc add*(this: var Path2, c: Curve2) =
 proc add*(this: var Path2, p: Point2) =
   if this.curves.len == 0:
     this.curves.add Path2_BuildPoint(pos: p, kind: StartPoint).toOwnedCurve2
+  elif this.pointAtParam(1) ~== p:
+    discard
   else:
     this.add lineSection(this.pointAt(1), p).toOwnedCurve2
 

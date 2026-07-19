@@ -61,3 +61,10 @@ proc overlaps*(a, b: Bounds2, tolerance: Float = epsilon(Float)): bool =
 proc contains*(box: Bounds2, p: Point2, tolerance: Float = epsilon(Float)): bool =
   p.x >= box.min.x - tolerance and p.x <= box.max.x + tolerance and
   p.y >= box.min.y - tolerance and p.y <= box.max.y + tolerance
+
+proc containsX*(box: Bounds2, x: Float, tolerance: Float = epsilon(Float)): bool =
+  x >= box.min.x - tolerance and x <= box.max.x + tolerance
+
+proc containsY*(box: Bounds2, y: Float, tolerance: Float = epsilon(Float)): bool =
+  y >= box.min.y - tolerance and y <= box.max.y + tolerance
+

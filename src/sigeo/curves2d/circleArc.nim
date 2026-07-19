@@ -1,4 +1,4 @@
-import ../core/[vectors, points, bounds, buildutils]
+import ../core/[vectors, points, bounds2, buildutils]
 import ../macros/[genAliases]
 import ./[icurve2]
 

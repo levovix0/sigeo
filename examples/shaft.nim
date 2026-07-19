@@ -4,6 +4,8 @@ import pkg/rice
 import sigeo/[core, grids]
 import sigeo/grids/smoothshading
 
+{.deprecated: "this example uses deleted `grids` module. There are currently no alternative way to implement this example".}
+
 
 proc toGpu*(grid: Grid3): Mesh =
   let grid = triangulate grid

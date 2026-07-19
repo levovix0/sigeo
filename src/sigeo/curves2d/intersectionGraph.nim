@@ -1,5 +1,5 @@
 import std/[algorithm, tables, hashes, math]
-import ../core/[vectors, points, bounds, bitmask]
+import ../core/[vectors, points, bounds2, bitmask]
 import ../macros/[compacting]
 import ./[icurve2, lineSection, circleArc, intersections]
 
@@ -86,6 +86,7 @@ proc genericIntersectionPointsParams*(
 
   # neighboring leaf cells report the same intersection multiple times,
   # cluster raw hits that are adjacent in param space and average them
+  # todo: instead of doing this, first check intersection with endpoints and if it intersects, do not check intersection with corresponding curves
   sort raw
   let paramTolA = 4 * tolerance / max(curveA.length, tolerance)
   let paramTolB = 4 * tolerance / max(curveB.length, tolerance)
