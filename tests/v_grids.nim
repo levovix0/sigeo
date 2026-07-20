@@ -34,6 +34,14 @@ let surf = CylinderSurface3(axisX: v3(1, 0, 0), axisY: v3(0, 0, -1), axisZ: v3(0
 let grid = surf.makeGrid([Curve2 outerArc, innerArc], resolution)
 let mesh = grid.toGpu
 
+
+proc drawDots(ctx: DrawContext, pts: seq[Vec3], radius: float = 3) =
+  ## todo
+
+proc drawWireframe(ctx: DrawContext, grid: Grid3, thickness: float = 1) =
+  ## todo
+
+
 app.run proc(ctx: DrawContext) =
   push_blendRgbx ctx
 

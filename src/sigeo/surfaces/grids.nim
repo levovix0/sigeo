@@ -1,6 +1,6 @@
-import std/[sequtils]
+import std/[sequtils, algorithm]
 import ../core/[vectors, points, bounds2]
-import ../curves2d/[icurve2, intersectionGraph]
+import ../curves2d/[icurve2]
 import ./[isurface3]
 
 type
@@ -67,12 +67,15 @@ proc makeGrid*(surface: Surface3, brep: openArray[Curve2], minU, minV, maxU, max
   let vCount = ((maxV - minV) / stepV).ceil.int
   if uCount * vCount <= 0: return
 
-  var grid = newSeqOfCap[int32](uCount * vCount)  # (uI * vCount + vI) -> (-1 if not in grid, index of the point in grid otherwise)
-  template `[]`(grid: seq[int32], uI, vI: int): int32 = grid[uI * vCount + vI]
+  var grid = newSeqOfCap[int32]((uCount + 2) * (vCount + 2))  # (uI * vCount + vI) -> (-1 if not in grid, index of the point in grid otherwise)
+  template `[]`(grid: seq[int32], uI, vI: int): int32 = grid[(uI + 1) * (vCount + 2) + vI + 1]
   template exists(i: int32): bool = i >= 0
+
+  for _ in 0..<(uCount+2): grid.add -1
 
   for uI in 0..<uCount:
     let u = minU + stepU * uI.Float
+    grid.add -1
     for vI in 0..<vCount:
       let v = minV + stepV * vI.Float
       let vert = point2(u, v)
@@ -81,27 +84,48 @@ proc makeGrid*(surface: Surface3, brep: openArray[Curve2], minU, minV, maxU, max
         result.points.add surface.pointAt(vert)
       else:
         grid.add -1
-  
-  for uI in 0..<(uCount-1):
-    for vI in 0..<(vCount-1):
-      if grid[uI, vI].exists and grid[uI + 1, vI].exists and grid[uI + 1, vI + 1].exists and grid[uI, vI + 1].exists:
-        result.indices.add [grid[uI, vI], grid[uI + 1, vI], grid[uI + 1, vI + 1], grid[uI, vI + 1]]
+    grid.add -1
 
-  # todo: add percise boundary quads
+  for _ in 0..<(uCount+2): grid.add -1
 
   for uI in 0..<uCount:
     let u = minU + stepU * uI.Float
+    var pts: seq[Point2]
     for curve in brep:
-      for param in curve.xAxisIntersection(u):
-        let curvePt = curve.pointAt(param)
-        result.points.add surface.pointAt(curvePt)
+      for param in curve.yAxisIntersection(u):
+        pts.add curve.pointAt(param)
+    sort pts, proc(a, b: Point2): int = cmp(a.y, b.y)
+    for ptI, pt in pts:
+      let vIf = (pt.y - minV) / stepV
+      let vI = (if ptI mod 2 == 0: vIf.floor.int else: vIf.ceil.int)
+      if not grid[uI, vI].exists:
+        grid[uI, vI] = result.points.len.int32
+        result.points.add surface.pointAt(pt)
+      else:
+        result.points[grid[uI, vI]] = surface.pointAt(pt)
   
   for vI in 0..<vCount:
     let v = minV + stepV * vI.Float
+    var pts: seq[Point2]
     for curve in brep:
-      for param in curve.yAxisIntersection(v):
-        let curvePt = curve.pointAt(param)
-        result.points.add surface.pointAt(curvePt)
+      for param in curve.xAxisIntersection(v):
+        pts.add curve.pointAt(param)
+    sort pts, proc(a, b: Point2): int = cmp(a.x, b.x)
+    for ptI, pt in pts:
+      let uIf = (pt.x - minU) / stepU
+      let uI = (if ptI mod 2 == 0: uIf.floor.int else: uIf.ceil.int)
+      if not grid[uI, vI].exists:
+        grid[uI, vI] = result.points.len.int32
+        result.points.add surface.pointAt(pt)
+      else:
+        result.points[grid[uI, vI]] = surface.pointAt(pt)
+
+  # todo: fix "courner" borders
+  
+  for uI in -1..<uCount:
+    for vI in -1..<vCount:
+      if grid[uI, vI].exists and grid[uI + 1, vI].exists and grid[uI + 1, vI + 1].exists and grid[uI, vI + 1].exists:
+        result.indices.add [grid[uI, vI], grid[uI + 1, vI], grid[uI + 1, vI + 1], grid[uI, vI + 1]]
 
 
 proc makeGrid*(surface: Surface3, brep: openArray[Curve2], stepU, stepV: Float): Grid3 =
