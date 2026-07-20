@@ -67,22 +67,20 @@ proc makeGrid*(surface: Surface3, brep: openArray[Curve2], minU, minV, maxU, max
   let vCount = ((maxV - minV) / stepV).ceil.int
   if uCount * vCount <= 0: return
 
-  var grid = newSeqOfCap[int32](uCount * vCount)  # (uI * uCount + vI) -> (-1 if not in grid, index of the point in grid otherwise)
-  template `[]`(grid: seq[int32], uI, vI: int): int32 = grid[uI * uCount + vI]
+  var grid = newSeqOfCap[int32](uCount * vCount)  # (uI * vCount + vI) -> (-1 if not in grid, index of the point in grid otherwise)
+  template `[]`(grid: seq[int32], uI, vI: int): int32 = grid[uI * vCount + vI]
   template exists(i: int32): bool = i >= 0
 
-  var u = minU
-  while u <= maxU:
-    var v = minV
-    while v <= maxV:
+  for uI in 0..<uCount:
+    let u = minU + stepU * uI.Float
+    for vI in 0..<vCount:
+      let v = minV + stepV * vI.Float
       let vert = point2(u, v)
       if brep.brepContains(vert):
         grid.add result.points.len.int32
         result.points.add surface.pointAt(vert)
       else:
         grid.add -1
-      v += stepV
-    u += stepU
   
   for uI in 0..<(uCount-1):
     for vI in 0..<(vCount-1):
@@ -91,15 +89,29 @@ proc makeGrid*(surface: Surface3, brep: openArray[Curve2], minU, minV, maxU, max
 
   # todo: add percise boundary quads
 
-# todo: visual test this
+  for uI in 0..<uCount:
+    let u = minU + stepU * uI.Float
+    for curve in brep:
+      for param in curve.xAxisIntersection(u):
+        let curvePt = curve.pointAt(param)
+        result.points.add surface.pointAt(curvePt)
+  
+  for vI in 0..<vCount:
+    let v = minV + stepV * vI.Float
+    for curve in brep:
+      for param in curve.yAxisIntersection(v):
+        let curvePt = curve.pointAt(param)
+        result.points.add surface.pointAt(curvePt)
 
 
 proc makeGrid*(surface: Surface3, brep: openArray[Curve2], stepU, stepV: Float): Grid3 =
   let bounds = brep.mapIt(it.bounds).sum
-  makeGrid(surface, brep, bounds.min.x - stepU/2, bounds.min.y - stepV/2, bounds.max.x, bounds.max.y, stepU, stepV)
+  makeGrid(surface, brep, bounds.min.x, bounds.min.y, bounds.max.x, bounds.max.y, stepU, stepV)
 
 proc makeGrid*(surface: Surface3, brep: openArray[Curve2], resolution = 16): Grid3 =
   let bounds = brep.mapIt(it.bounds).sum
-  makeGrid(surface, brep, bounds.min.x, bounds.min.y, bounds.max.x, bounds.max.y, bounds.size.x / resolution.Float, bounds.size.y / resolution.Float)
+  let stepU = bounds.size.x / resolution.Float
+  let stepV = bounds.size.y / resolution.Float
+  makeGrid(surface, brep, bounds.min.x, bounds.min.y, bounds.max.x, bounds.max.y, stepU, stepV)
 
 

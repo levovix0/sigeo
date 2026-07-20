@@ -1,6 +1,7 @@
-import pkg/[siwin, vmath, chroma]
-import rice
+import std/[sequtils]
+import pkg/[siwin, vmath, chroma, rice]
 import sigeo/[core]
+import sigeo/surfaces/[grids]
 
 
 type
@@ -43,6 +44,27 @@ proc drawBoundsRect*(ctx: DrawContext, b: Bounds2, color: Color, thickness: floa
   ctx.drawSegment(tr, b.max, color, thickness)
   ctx.drawSegment(b.max, bl, color, thickness)
   ctx.drawSegment(bl, b.min, color, thickness)
+
+
+
+proc toGpu*(grid: Grid3): Mesh =
+  let grid = triangulate grid
+
+  case grid.kind
+  of Triangles:
+    let normals = computeVertexNormals(grid.points, grid.indices.mapIt(it.int))
+    var points: seq[tuple[pos: Vec3, normal: Vec3]]
+    for idx in countup(0, grid.indices.high - 2, 3):
+      let i0 = grid.indices[idx].int
+      let i1 = grid.indices[idx + 1].int
+      let i2 = grid.indices[idx + 2].int
+      points.add (grid.points[i0].V3.vec3, normals[i0].vec3)
+      points.add (grid.points[i1].V3.vec3, normals[i1].vec3)
+      points.add (grid.points[i2].V3.vec3, normals[i2].vec3)
+
+    result = newMesh(points, GlTriangles)
+  else:
+    raise ValueError.newException("unsupported grid kind: " & $grid.kind)
 
 
 
