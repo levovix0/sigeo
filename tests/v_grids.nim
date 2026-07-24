@@ -2,8 +2,8 @@
 ##
 ## The grid is computed from two closed 2D contours forming an outer boundary and a circular hole in the middle.
 
-import std/[math]
-import pkg/chroma
+import std/[math, sequtils]
+import pkg/[chroma, siwin]
 import rice
 import sigeo/[core, curves2d, surfaces]
 import ./drawutils
@@ -27,47 +27,78 @@ let app = newVisualTest(
   contentCenter = vec2(0, 0),
 )
 
-let outerArc = circleArc(p2(0, 0), outerRadius)
-let innerArc = circleArc(p2(outerRadius * 0.35, outerRadius * 0.35), holeRadius)
-let surf = CylinderSurface3(axisX: v3(1, 0, 0), axisY: v3(0, 0, -1), axisZ: v3(0, 1, 0), radius: 300)
 
-let grid = surf.makeGrid([Curve2 outerArc, innerArc], resolution)
-let mesh = grid.toGpu
-
-
-proc drawDots(ctx: DrawContext, pts: seq[Vec3], radius: float = 3) =
-  ## todo
+proc drawDots(ctx: DrawContext, pts: seq[Vec3], thickness: float = 1) =
+  let cameraDir = normalize(ctx.viewportMatrix.inverse * vec3(0, 0, -1))
+  for pt in pts:
+    ctx.fillCircle(
+      color = color(1, 1, 1),
+      center = pt,
+      radius = holeRadius / resolution / 1000 / app.camera.zoom * thickness,
+      normal = cameraDir,
+    )
 
 proc drawWireframe(ctx: DrawContext, grid: Grid3, thickness: float = 1) =
-  ## todo
-
-
-app.run proc(ctx: DrawContext) =
-  push_blendRgbx ctx
-
   let cameraDir = normalize(ctx.viewportMatrix.inverse * vec3(0, 0, -1))
-
-  # faces
-  ctx.fill3dMeshShadedByNormalsSingleSide(mesh, color(1.0, 0.55, 0.25) * 0.75, color(1.0, 0.55, 0.25) * 0.5)
-
-  # edges
   for i in countup(0, grid.indices.high, 4):
     for j in 0..<4:
       ctx.fillCapsule(
         color = color(0.75, 0.75, 0.75),
-        radius = holeRadius / resolution / 1000 / app.camera.zoom / 3,
+        radius = holeRadius / resolution / 1000 / app.camera.zoom / 3 * thickness,
         a = grid.points[grid.indices[i + j]].V3.vec3,
         b = grid.points[grid.indices[i + ((j + 1) mod 4)]].V3.vec3,
         normal = cameraDir,
       )
 
-  # vertices
-  for pt in grid.points:
-    ctx.fillCircle(
-      color = color(1, 1, 1),
-      center = pt.V3.vec3,
-      radius = holeRadius / resolution / 1000 / app.camera.zoom,
-      normal = cameraDir,
-    )
+
+let outerArc = circleArc(p2(0, 0), outerRadius)
+let innerArc = circleArc(p2(outerRadius * 0.35, outerRadius * 0.35), holeRadius)
+
+var grid: Grid3
+var mesh: Mesh
+
+var selectedSurface = 0
+
+proc setSurface(surf: Surface3) =
+  grid = surf.makeGrid([Curve2 outerArc, innerArc], resolution)
+  mesh = grid.toGpu
+
+proc selectSurcace(i: int) =
+  case i
+  of 0: setSurface Plane3(axisX: v3(1, 0, 0), axisY: v3(0, 1, 0), axisZ: v3(0, 0, 1))
+  of 1: setSurface CylinderSurface3(axisX: v3(1, 0, 0), axisY: v3(0, 0, -1), axisZ: v3(0, 1, 0), radius: 300)
+  of 2: setSurface SphereSurface3(axisX: v3(1, 0, 0), axisY: v3(0, 0, -1), axisZ: v3(0, 1, 0), radius: 300)
+  of 3: setSurface ThorusSurface3(axisX: v3(1, 0, 0), axisY: v3(0, 0, -1), axisZ: v3(0, 1, 0), innerRadius: 130, outerRadius: 500)
+  else: discard
+
+selectSurcace selectedSurface
+
+
+app.onKey proc(e: KeyEvent) =
+  if e.pressed:
+    const total = 4
+
+    case e.key
+    of Key.left:
+      dec selectedSurface
+      if selectedSurface < 0: selectedSurface = total-1
+      selectSurcace selectedSurface
+      redraw e.window
+    
+    of Key.right:
+      inc selectedSurface
+      if selectedSurface >= total: selectedSurface = 0
+      selectSurcace selectedSurface
+      redraw e.window
+    
+    else: discard
+
+
+app.run proc(ctx: DrawContext) =
+  push_blendRgbx ctx
+
+  ctx.fill3dMeshShadedByNormalsSingleSide(mesh, color(1.0, 0.55, 0.25) * 0.75, color(1.0, 0.55, 0.25) * 0.5)
+  ctx.drawWireframe(grid)
+  ctx.drawDots(grid.points.mapIt(it.V3.vec3))
   
   pop_blendRgbx ctx

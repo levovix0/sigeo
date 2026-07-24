@@ -70,11 +70,13 @@ proc makeGrid*(surface: Surface3, brep: openArray[Curve2], minU, minV, maxU, max
   var grid = newSeqOfCap[int32]((uCount + 2) * (vCount + 2))  # (uI * vCount + vI) -> (-1 if not in grid, index of the point in grid otherwise)
   template `[]`(grid: seq[int32], uI, vI: int): int32 = grid[(uI + 1) * (vCount + 2) + vI + 1]
   template exists(i: int32): bool = i >= 0
+  template toU(uI: int): Float = minU + stepU * uI.Float
+  template toV(vI: int): Float = minV + stepV * vI.Float
 
   for _ in 0..<(uCount+2): grid.add -1
 
   for uI in 0..<uCount:
-    let u = minU + stepU * uI.Float
+    let u = uI.toU
     grid.add -1
     for vI in 0..<vCount:
       let v = minV + stepV * vI.Float
@@ -89,7 +91,7 @@ proc makeGrid*(surface: Surface3, brep: openArray[Curve2], minU, minV, maxU, max
   for _ in 0..<(uCount+2): grid.add -1
 
   for uI in 0..<uCount:
-    let u = minU + stepU * uI.Float
+    let u = uI.toU
     var pts: seq[Point2]
     for curve in brep:
       for param in curve.yAxisIntersection(u):
@@ -105,7 +107,7 @@ proc makeGrid*(surface: Surface3, brep: openArray[Curve2], minU, minV, maxU, max
         result.points[grid[uI, vI]] = surface.pointAt(pt)
   
   for vI in 0..<vCount:
-    let v = minV + stepV * vI.Float
+    let v = vI.toV
     var pts: seq[Point2]
     for curve in brep:
       for param in curve.xAxisIntersection(v):
@@ -119,13 +121,35 @@ proc makeGrid*(surface: Surface3, brep: openArray[Curve2], minU, minV, maxU, max
         result.points.add surface.pointAt(pt)
       else:
         result.points[grid[uI, vI]] = surface.pointAt(pt)
-
-  # todo: fix "courner" borders
   
   for uI in -1..<uCount:
     for vI in -1..<vCount:
       if grid[uI, vI].exists and grid[uI + 1, vI].exists and grid[uI + 1, vI + 1].exists and grid[uI, vI + 1].exists:
         result.indices.add [grid[uI, vI], grid[uI + 1, vI], grid[uI + 1, vI + 1], grid[uI, vI + 1]]
+
+      elif grid[uI, vI].exists and grid[uI + 1, vI].exists and grid[uI + 1, vI + 1].exists #[and grid[uI, vI + 1].exists]#:
+        let p1 = result.points[grid[uI, vI]]
+        let p2 = result.points[grid[uI+1, vI+1]]
+        result.points.add p1 + (p2 - p1)/2
+        result.indices.add [grid[uI, vI], result.points.high.int32, grid[uI + 1, vI + 1], grid[uI + 1, vI]]
+      
+      elif grid[uI, vI].exists and grid[uI + 1, vI].exists #[and grid[uI + 1, vI + 1].exists]# and grid[uI, vI + 1].exists:
+        let p1 = result.points[grid[uI, vI+1]]
+        let p2 = result.points[grid[uI+1, vI]]
+        result.points.add p1 + (p2 - p1)/2
+        result.indices.add [grid[uI, vI + 1], result.points.high.int32, grid[uI + 1, vI], grid[uI, vI]]
+      
+      elif grid[uI, vI].exists #[and grid[uI + 1, vI].exists]# and grid[uI + 1, vI + 1].exists and grid[uI, vI + 1].exists:
+        let p1 = result.points[grid[uI+1, vI+1]]
+        let p2 = result.points[grid[uI, vI]]
+        result.points.add p1 + (p2 - p1)/2
+        result.indices.add [grid[uI + 1, vI + 1], result.points.high.int32, grid[uI, vI], grid[uI, vI + 1]]
+      
+      elif #[grid[uI, vI].exists and]# grid[uI + 1, vI].exists and grid[uI + 1, vI + 1].exists and grid[uI, vI + 1].exists:
+        let p1 = result.points[grid[uI, vI+1]]
+        let p2 = result.points[grid[uI+1, vI]]
+        result.points.add p1 + (p2 - p1)/2
+        result.indices.add [grid[uI, vI + 1], result.points.high.int32, grid[uI + 1, vI], grid[uI + 1, vI + 1]]
 
 
 proc makeGrid*(surface: Surface3, brep: openArray[Curve2], stepU, stepV: Float): Grid3 =
