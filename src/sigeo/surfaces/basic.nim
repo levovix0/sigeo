@@ -19,6 +19,7 @@ type
     axisX*, axisY*, axisZ*: NormalVec3
     innerRadius*, outerRadius*: Float
 
+
 proc pointAt*(surface: Plane3, uv: Point2): Point3 =
   surface.pos + uv.x * surface.axisX + uv.y * surface.axisY
 

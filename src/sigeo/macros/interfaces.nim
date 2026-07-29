@@ -1,4 +1,4 @@
-import std/[macros, hashes]
+import std/[macros, hashes, sequtils, strutils]
 
 
 ## Interfaces are unowned fat pointers to arbitrary object. Basicaly an (obj: pointer, vtable: ptr VtableType).
@@ -21,6 +21,7 @@ type
 
   MethodSig = object
     name: string
+    overload: int = 0
     nonThisParams: seq[NimNode]  # IdentDefs with original types (no pointer substitution)
     retType: NimNode
 
@@ -31,6 +32,10 @@ proc publicField(name: string, typ: NimNode): NimNode =
     typ,
     newEmptyNode()
   )
+
+proc fullName(m: MethodSig): string =
+  if m.overload == 0: m.name
+  else: m.name & "_" & $m.overload
 
 
 proc procTy(params: seq[NimNode], retType: NimNode, raisesNone: bool): NimNode =
@@ -80,6 +85,7 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
       let methodName = $stmt[0]
       let formalParams = stmt[3]
       let retType = formalParams[0]
+      let overload = methods.filterIt(it.name == methodName).len
 
       var vtableParams: seq[NimNode]
       var nonThisParams: seq[NimNode]
@@ -91,8 +97,9 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
           vtableParams.add(nnkIdentDefs.newTree(p[0], p[1], newEmptyNode()))
           nonThisParams.add(nnkIdentDefs.newTree(p[0], p[1], newEmptyNode()))
 
-      vtableFields.add(publicField(methodName, procTy(vtableParams, retType, false)))
-      methods.add(MethodSig(name: methodName, nonThisParams: nonThisParams, retType: retType))
+      let sig = MethodSig(name: methodName, overload: overload, nonThisParams: nonThisParams, retType: retType)
+      methods.add(sig)
+      vtableFields.add(publicField(sig.fullName, procTy(vtableParams, retType, false)))
 
   # Xxx / OwnedXxx share the same shape
   # todo: try to make refcounted RefXxx instead of OwnedXxx and check if it will integrate well with Nim's GC
@@ -241,7 +248,7 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
     result.add mkProc(
       nnkPostfix.newTree(ident"*", ident(m.name)),
       fparams,
-      newStmtList(callThrough("this", m.name, callArgs))
+      newStmtList(callThrough("this", m.fullName, callArgs))
     )
 
   # XXXConcept type
@@ -256,6 +263,8 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
       if m.retType.kind == nnkIdent and m.retType.strVal == "Owned" & nameStr:
         # the implementor returns its own concrete type, which is wrapped into
         # OwnedXxx automatically — only require the call to typecheck
+        entries.add call
+      elif m.retType.kind == nnkEmpty:
         entries.add call
       else:
         entries.add nnkInfix.newTree(
@@ -357,8 +366,15 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed], fwd: sta
   var methods: seq[MethodSig]
   for fieldDef in recList:
     let nameNode = fieldDef[0]
-    let fname = (if nameNode.kind == nnkPostfix: nameNode[1] else: nameNode).strVal
-    if fname in lifecycleNames: continue
+    var methodName = (if nameNode.kind == nnkPostfix: nameNode[1] else: nameNode).strVal
+    if methodName in lifecycleNames: continue
+    
+    var overload = 0
+    if (let i = methodName.rfind('_'); i != -1):
+      try:
+        overload = parseInt(methodName[i + 1 .. ^1])
+        methodName = methodName[0..<i]
+      except ValueError: discard
 
     let procType = fieldDef[1]
     let formalParams = procType[0]
@@ -370,7 +386,7 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed], fwd: sta
       if p[0].strVal != "this":
         nonThisParams.add(nnkIdentDefs.newTree(p[0], p[1], newEmptyNode()))
 
-    methods.add(MethodSig(name: fname, nonThisParams: nonThisParams, retType: retType))
+    methods.add(MethodSig(name: methodName, overload: overload, nonThisParams: nonThisParams, retType: retType))
 
   result = nnkStmtList.newTree()
 
@@ -523,7 +539,7 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed], fwd: sta
             ))
           )
 
-        objConstr.add nnkExprColonExpr.newTree(ident(m.name),
+        objConstr.add nnkExprColonExpr.newTree(ident(m.fullName),
           mkLambda(lambdaParams, m.retType, nimcall.copy, newStmtList(methodExpr))
         )
 
