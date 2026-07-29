@@ -22,15 +22,14 @@ type
   MethodSig = object
     name: string
     overload: int = 0
-    nonThisParams: seq[NimNode]  # IdentDefs with original types (no pointer substitution)
+    params: seq[NimNode]  # seq[IdentDef], name is "this", assumed to be the one that has the vtable
     retType: NimNode
 
 
 proc publicField(name: string, typ: NimNode): NimNode =
-  nnkIdentDefs.newTree(
+  newIdentDefs(
     nnkPostfix.newTree(ident"*", ident(name)),
-    typ,
-    newEmptyNode()
+    typ
   )
 
 proc fullName(m: MethodSig): string =
@@ -87,19 +86,17 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
       let retType = formalParams[0]
       let overload = methods.filterIt(it.name == methodName).len
 
-      var vtableParams: seq[NimNode]
-      var nonThisParams: seq[NimNode]
+      var params: seq[NimNode]
       for i in 1 ..< formalParams.len:
         let p = formalParams[i]
         if p[1].kind == nnkEmpty:
-          vtableParams.add(nnkIdentDefs.newTree(p[0], ident"pointer", newEmptyNode()))
+          params.add(newIdentDefs(p[0], ident"pointer"))
         else:
-          vtableParams.add(nnkIdentDefs.newTree(p[0], p[1], newEmptyNode()))
-          nonThisParams.add(nnkIdentDefs.newTree(p[0], p[1], newEmptyNode()))
+          params.add(newIdentDefs(p[0], p[1]))
 
-      let sig = MethodSig(name: methodName, overload: overload, nonThisParams: nonThisParams, retType: retType)
+      let sig = MethodSig(name: methodName, overload: overload, params: params, retType: retType)
       methods.add(sig)
-      vtableFields.add(publicField(sig.fullName, procTy(vtableParams, retType, false)))
+      vtableFields.add(publicField(sig.fullName, procTy(params, retType, false)))
 
   # Xxx / OwnedXxx share the same shape
   # todo: try to make refcounted RefXxx instead of OwnedXxx and check if it will integrate well with Nim's GC
@@ -240,11 +237,11 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
   # Method forwarders on the base (Xxx) type
   # (after the lifecycle hooks: a forwarder returning OwnedXxx must not bind default hooks)
   for m in methods:
-    var fparams: seq[NimNode] = @[m.retType, newIdentDefs(ident"this", name)]
-    var callArgs: seq[NimNode] = @[dot("this", "obj")]
-    for p in m.nonThisParams:
-      fparams.add(p)
-      callArgs.add(p[0])
+    var fparams: seq[NimNode] = @[m.retType]
+    var callArgs: seq[NimNode]
+    for p in m.params:
+      fparams.add(if p[0] == ident("this"): newIdentDefs(ident"this", name) else: p)
+      callArgs.add(if p[0] == ident("this"): dot("this", "obj") else: p[0])
     result.add mkProc(
       nnkPostfix.newTree(ident"*", ident(m.name)),
       fparams,
@@ -256,9 +253,9 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
     var entries = newStmtList()
     
     for m in methods:
-      var call = nnkCall.newTree(ident(m.name), ident("this"))
-      for p in m.nonThisParams:
-        call.add(p[1])
+      var call = newCall(ident(m.name))
+      for p in m.params:
+        call.add(if p[0] == ident("this"): p[0] else: p[1])
 
       if m.retType.kind == nnkIdent and m.retType.strVal == "Owned" & nameStr:
         # the implementor returns its own concrete type, which is wrapped into
@@ -379,14 +376,9 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed], fwd: sta
     let procType = fieldDef[1]
     let formalParams = procType[0]
     let retType = formalParams[0]
+    var params = formalParams[1..^1]
 
-    var nonThisParams: seq[NimNode]
-    for i in 1 ..< formalParams.len:
-      let p = formalParams[i]
-      if p[0].strVal != "this":
-        nonThisParams.add(nnkIdentDefs.newTree(p[0], p[1], newEmptyNode()))
-
-    methods.add(MethodSig(name: methodName, overload: overload, nonThisParams: nonThisParams, retType: retType))
+    methods.add(MethodSig(name: methodName, overload: overload, params: params, retType: retType))
 
   result = nnkStmtList.newTree()
 
@@ -509,21 +501,19 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed], fwd: sta
 
       # Interface methods: delegate to the implementor's method
       for m in methods:
-        var lambdaParams: seq[NimNode] = @[newIdentDefs(ident"this", ident"pointer")]
+        var lambdaParams: seq[NimNode]
         var callArgs: seq[NimNode]
-        for p in m.nonThisParams:
+        for p in m.params:
           # p[0] is a sym from getImpl — use a fresh ident so it's the lambda's own param
           let pname = ident(p[0].strVal)
-          lambdaParams.add(nnkIdentDefs.newTree(pname, p[1], newEmptyNode()))
-          callArgs.add(pname)
+          lambdaParams.add(newIdentDefs(pname, p[1]))
+          callArgs.add(if pname == ident("this"): derefCast(ident("this")) else: pname)
 
-        var methodExpr: NimNode
-        let access = nnkDotExpr.newTree(derefCast(ident"this"), ident(m.name))
-        if callArgs.len == 0:
-          methodExpr = access
-        else:
-          methodExpr = nnkCall.newTree(access)
-          for a in callArgs: methodExpr.add(a)
+        var methodExpr =
+          if callArgs.len == 1 and callArgs[0].kind != nnkIdent:
+            nnkDotExpr.newTree(derefCast(ident("this")), ident(m.name))
+          else:
+            newCall(ident(m.name), callArgs)
 
         if m.retType.kind in {nnkIdent, nnkSym} and m.retType.strVal == "Owned" & nameStr:
           # the implementor may return its own concrete type — wrap it into OwnedXxx
@@ -592,18 +582,16 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed], fwd: sta
         newEmptyNode(),
         nnkFormalParams.newTree(
           ident("bool"),
-          nnkIdentDefs.newTree(
+          newIdentDefs(
             ident("this"),
-            ident(nameStr),
-            newEmptyNode()
+            ident(nameStr)
           ),
-          nnkIdentDefs.newTree(
+          newIdentDefs(
             ident("t"),
             nnkBracketExpr.newTree(
               ident("typedesc"),
               ident(implStr)
-            ),
-            newEmptyNode()
+            )
           )
         ),
         nnkPragma.newTree(
@@ -645,18 +633,16 @@ macro implementInterfaceFor*(name: typed, implementors: varargs[typed], fwd: sta
           nnkVarTy.newTree(
             ident(implStr)
           ),
-          nnkIdentDefs.newTree(
+          newIdentDefs(
             ident("this"),
-            ident(nameStr),
-            newEmptyNode()
+            ident(nameStr)
           ),
-          nnkIdentDefs.newTree(
+          newIdentDefs(
             ident("t"),
             nnkBracketExpr.newTree(
               ident("typedesc"),
               ident(implStr)
-            ),
-            newEmptyNode()
+            )
           )
         ),
         nnkPragma.newTree(
