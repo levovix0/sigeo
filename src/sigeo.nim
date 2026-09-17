@@ -1,3 +1,3 @@
-import ./sigeo/[core, curves2d, grids]
-export core, curves2d, grids
+import ./sigeo/[core, macros, curves2d, surfaces]
+export core, macros, curves2d, surfaces
 

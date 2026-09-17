@@ -1,3 +1,11 @@
+import os, strutils, strformat, sequtils, algorithm
 
 task test, "run tests":
-  exec "nim c -r tests/t_curves2d.nim"
+  for (kind, path) in walkDir("tests").toSeq.sorted:
+    if path.splitFile.ext == ".nim" and path.splitFile.name.startsWith("t_"):
+      exec &"nim c -r {path}"
+
+task vtest, "run visual tests":
+  for (kind, path) in walkDir("tests").toSeq.sorted:
+    if path.splitFile.ext == ".nim" and path.splitFile.name.startsWith("v_"):
+      exec &"nim c -r {path}"

@@ -219,11 +219,11 @@ macro makeInterfaceImpl(name, body: untyped): untyped =
       newIdentDefs(ident"other", ownedName)],
     newStmtList(
       nnkIfStmt.newTree(nnkElifBranch.newTree(
-        nnkInfix.newTree(ident("!="), dot("this", "obj"), newNilLit()),  # nil guard
-        callThrough("this", "destroy", @[dot("this", "obj")])
+        nnkInfix.newTree(ident("!="), "this".dot("obj"), newNilLit()),  # nil guard
+        callThrough("this", "destroy", @["this".dot("obj")])
       )),
-      callThrough("other", "sink", @[dot("other", "obj"), dot("this", "obj")]),
-      nnkAsgn.newTree(dot("this", "vtable"), dot("other", "vtable"))
+      callThrough("other", "sink", @["other".dot("obj"), "this".dot("obj")]),
+      nnkAsgn.newTree("this".dot("vtable"), "other".dot("vtable"))
     )
   )
 

@@ -212,6 +212,13 @@ template `~==`*(a, b: Float): bool =
   a.almostEqual(b)
 
 
+proc almostEqual*[T](a, b: seq[T], unitsInLastSpace: Natural = 4): bool {.aliases: [`~==`].} =
+  if a.len != b.len: return false
+  result = true
+  for i in 0..<a.len:
+    if a[i].almostEqual(b[i]).not: return false
+
+
 proc almostEqualOrLess*(a, b: Float; unitsInLastPlace: Natural = 4): bool {.aliases: [`~<`].} =
   ## return true if a is less than b or almost equal to it
   a < b + epsilon(Float) * Float(unitsInLastPlace)
