@@ -15,11 +15,8 @@ feature "c3dBackend":
   requires "https://github.com/levovix0/c3d"
 
 
-feature "moduleTests":
+feature "sigeo_tests":
   requires "print >= 0.1.0"  # for debugging
-
-feature "examples":
-  requires "rice"
-  requires "shady == 0.1.4"
-  requires "siwin"
+  requires "rice >= 0.1.6"
+  requires "siwin >= 1.1.2"
 

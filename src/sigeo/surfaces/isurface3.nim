@@ -1,4 +1,4 @@
-import ../core/[vectors, points]
+import ../core/[points]
 import ../macros/[interfaces]
 export implementInterfaceFor
 

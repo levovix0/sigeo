@@ -77,8 +77,8 @@ proc addCameraMovement*(win: Window, cam: CameraState, axisYUp: bool = true) =
   win.eventsHandler.onMouseMove = proc(e: MouseMoveEvent) =
     let d = e.window.mouse.pos - mpos
     let dn = d / vec2(
-      e.window.size.x.float32 * (e.window.size.y / e.window.size.x).float32,
-      (if axisYUp: 1 else: -1) * e.window.size.y.float32
+      -e.window.size.x.float32 * (e.window.size.y / e.window.size.x).float32,
+      (if axisYUp: 1 else: -1) * -e.window.size.y.float32
     ) * 2
 
     if e.window.mouse.pressed == {MouseButton.right}:

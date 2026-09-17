@@ -70,16 +70,13 @@ proc buildBvh3[T: HasBounds3](objects: var seq[T], start, `end`: int): BvhNode3[
   # let node = BVHNode()
   # let count = `end` - start
 
-  # # Вычисляем границы текущего узла
   # node.bounds = computeBounds(objects.toOpenArray(start, `end` - 1))
 
-  # # Базовый случай: если объектов мало, создаем лист
   # if count <= 2:
   #   node.isLeaf = true
   #   node.objects = objects[start ..< `end`]
   #   return node
 
-  # # Находим наиболее растянутую ось для разделения
   # let extentX = node.bounds.maxPoint[0] - node.bounds.minPoint[0]
   # let extentY = node.bounds.maxPoint[1] - node.bounds.minPoint[1]
   # let extentZ = node.bounds.maxPoint[2] - node.bounds.minPoint[2]
@@ -88,12 +85,10 @@ proc buildBvh3[T: HasBounds3](objects: var seq[T], start, `end`: int): BvhNode3[
   # if extentY > extentX: axis = 1
   # if extentZ > max(extentX, extentY): axis = 2
 
-  # # Сортируем объекты по центроиду вдоль выбранной оси
   # sort(objects[start ..< `end`], proc (x, y: T): int =
   #   cmp(x.centroid[axis], y.centroid[axis])
   # )
 
-  # # Разделяем пополам (объектный медианный сплит)
   # let mid = start + count div 2
 
   # node.isLeaf = false
