@@ -45,6 +45,39 @@ let grid = extrusionShellGrid(
 [shaft, shown on window](examples/shaft.nim)
 
 
+## SDF
+
+`sigeo/sdf` provides a signed distance field (SDF) core based on
+[Inigo Quilez's article "Distance functions"](https://iquilezles.org/articles/distfunctions/):
+primitives (`sdSphere`, `sdBox`, `sdTorus`, `sdCappedCone`, ...), operators
+(`opUnion`, `opSmoothUnion`, `opSubtraction`, `opElongate`, `opRound`, `opOnion`,
+`opTwist`, `opRepetition`, ...), and a translation of an SDF world into polygons
+(`polygonize`, marching tetrahedra producing a watertight `Grid3`).
+
+```nim
+import sigeo/[core, sdf]
+
+let shape = sdSphere(p3(0, 0, 0), 1)
+  .opUnion(sdBox(p3(1.5, 0, 0), v3(1, 0.5, 0.5)))
+  .opSmoothUnion(sdSphere(p3(1.5, 1.5, 0), 0.6), 0.3)
+  .opRound(0.05)
+
+let mesh: Grid3 = shape.polygonize(step = 0.05)
+```
+
+Every `Sdf3` tracks conservative bounds, so `polygonize` can detect the sampling
+area automatically; unbounded shapes (planes, infinite repetition, space
+deformations like `opTwist`) require explicit bounds:
+
+```nim
+let twisted = sdBox(p3(0, 1, 0), v3(0.85, 0.3, 0.3)).opTwist(2.2)
+let mesh = twisted.polygonize(bounds3(p3(-1.6, 0, -1.6), p3(1.6, 2, 1.6)), step = 0.025)
+```
+
+2D SDFs (`Sdf2`) can be extruded and revolved into 3D: `sdCircle(...).opExtrusion(0.5)`,
+`sdCircle(...).opRevolution(1.0)`.
+
+
 ## Compile flags
 
 - Float size:  
