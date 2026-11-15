@@ -328,11 +328,12 @@ proc sdSolidAngle*(apex: Point3, angleSinCos: V2, radius: Float): Sdf3 =
 
 
 proc sdCutSphere*(center: Point3, radius, cutHeight: Float): Sdf3 =
-  ## exact sphere with the part above the `center.y + cutHeight` plane cut off
+  ## exact sphere with the part below the `center.y + cutHeight` plane cut off
+  ## (the dome above the plane is kept; the flat face is at `center.y + cutHeight`)
   let r = radius
   let h = cutHeight
   let w = (r*r - h*h).sqrt
-  let halfXZ = (if h >= 0: r else: w)
+  let halfXZ = (if h >= 0: w else: r)
   sdf3(
     dist = proc(p: Point3): Float =
       let q = v2(v2(p.x - center.x, p.z - center.z).length, p.y - center.y)
@@ -342,29 +343,32 @@ proc sdCutSphere*(center: Point3, radius, cutHeight: Float): Sdf3 =
       else: (q - v2(w, h)).length
     ,
     bounds = Bounds3(
-      min: point3(center.x - halfXZ, center.y - r, center.z - halfXZ),
-      max: point3(center.x + halfXZ, center.y + h, center.z + halfXZ),
+      min: point3(center.x - halfXZ, center.y + h, center.z - halfXZ),
+      max: point3(center.x + halfXZ, center.y + r, center.z + halfXZ),
     ),
   )
 
 
 proc sdCutHollowSphere*(center: Point3, radius, cutHeight, thickness: Float): Sdf3 =
   ## exact hollow sphere shell of `thickness` thickness,
-  ## with the part above the `center.y + cutHeight` plane cut off
+  ## with the part below the `center.y + cutHeight` plane cut off
+  ## (the dome above the plane is kept; the flat edge is at `center.y + cutHeight`)
   let r = radius
   let h = cutHeight
   let t = thickness
   let w = (r*r - h*h).sqrt
   let outerRadius = r + t
-  let outerW = max(outerRadius*outerRadius - h*h, 0).sqrt
+  let outerW =
+    if h >= 0: max(outerRadius*outerRadius - h*h, 0).sqrt
+    else: outerRadius
   sdf3(
     dist = proc(p: Point3): Float =
       let q = v2(v2(p.x - center.x, p.z - center.z).length, p.y - center.y)
       (if h*q.x < w*q.y: (q - v2(w, h)).length else: (q.length - r).abs) - t
     ,
     bounds = Bounds3(
-      min: point3(center.x - outerW, center.y - outerRadius, center.z - outerW),
-      max: point3(center.x + outerW, center.y + h, center.z + outerW),
+      min: point3(center.x - outerW, center.y + h, center.z - outerW),
+      max: point3(center.x + outerW, center.y + outerRadius, center.z + outerW),
     ),
   )
 

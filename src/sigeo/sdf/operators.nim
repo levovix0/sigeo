@@ -7,25 +7,6 @@ import ./[common]
 # "Distance functions" (https://iquilezles.org/articles/distfunctions/)
 
 
-proc vround*(v: V3): V3 {.inline.} = v3(v.x.round, v.y.round, v.z.round)
-
-proc tile(v, spacing: Float): Float {.inline.} =
-  ## coordinate for a single axis of domain repetition, no repetition along zero-spacing axes
-  if spacing == 0: v
-  else: v - spacing * (v / spacing).round
-
-proc tileLimited(v, spacing, limit: Float): Float {.inline.} =
-  if spacing == 0: v
-  else: v - spacing * (v / spacing).round.clamp(-limit.abs, limit.abs)
-
-
-proc smoothMin*(a, b, k: Float): Float =
-  ## smooth minimum, `k` is the size of the transition (based on Inigo Quilez's article)
-  let k = k * 4
-  let h = max(k - (a - b).abs, 0)
-  min(a, b) - h*h*0.25/k
-
-
 # region boolean operations
 
 

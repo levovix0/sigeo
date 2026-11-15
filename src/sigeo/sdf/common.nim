@@ -54,6 +54,53 @@ proc isKnown*(b: Bounds2): bool =
   ## returns true if the bounds are finite and known (not empty)
   not b.empty and b.min.x.abs != Inf and b.min.y.abs != Inf
 
+proc shifted*(box: Bounds2, offset: V2): Bounds2 =
+  if box.empty: return box
+  bounds2(box.min + offset, box.max + offset)
+
+proc scaled*(box: Bounds2, factor: Float): Bounds2 =
+  if box.empty: return box
+  bounds2(
+    point2(box.min.x * factor, box.min.y * factor),
+    point2(box.max.x * factor, box.max.y * factor),
+  )
+
+proc rotated*(box: Bounds2, around: Point2, angle: Float): Bounds2 =
+  ## conservative bounds of a box rotated around a point
+  if box.empty: return box
+  for xi in 0..1:
+    for yi in 0..1:
+      let corner = point2(
+        if xi == 0: box.min.x else: box.max.x,
+        if yi == 0: box.min.y else: box.max.y,
+      )
+      result.add around + (corner - around).rotate(angle)
+
+proc intersect*(a, b: Bounds2): Bounds2 =
+  ## intersection of two bounding boxes; is empty if they don't overlap
+  if a.empty: return a
+  if b.empty: return b
+  bounds2(
+    point2(max(a.min.x, b.min.x), max(a.min.y, b.min.y)),
+    point2(min(a.max.x, b.max.x), min(a.max.y, b.max.y)),
+  )
+
+
+proc smoothMin*(a, b, k: Float): Float =
+  ## smooth minimum, `k` is the size of the transition (based on Inigo Quilez's article)
+  let k = k * 4
+  let h = max(k - (a - b).abs, 0)
+  min(a, b) - h*h*0.25/k
+
+proc tile*(v, spacing: Float): Float {.inline.} =
+  ## coordinate for a single axis of domain repetition, no repetition along zero-spacing axes
+  if spacing == 0: v
+  else: v - spacing * (v / spacing).round
+
+proc tileLimited*(v, spacing, limit: Float): Float {.inline.} =
+  if spacing == 0: v
+  else: v - spacing * (v / spacing).round.clamp(-limit.abs, limit.abs)
+
 proc isKnown*(b: Bounds3): bool =
   ## returns true if the bounds are finite and known (not empty)
   not b.isEmpty and b.min.x.abs != Inf and b.min.y.abs != Inf and b.min.z.abs != Inf

@@ -77,6 +77,25 @@ let mesh = twisted.polygonize(bounds3(p3(-1.6, 0, -1.6), p3(1.6, 2, 1.6)), step 
 2D SDFs (`Sdf2`) can be extruded and revolved into 3D: `sdCircle(...).opExtrusion(0.5)`,
 `sdCircle(...).opRevolution(1.0)`.
 
+There is also a full set of exact 2D primitives from Inigo Quilez's article
+["2D distance functions"](https://iquilezles.org/articles/distfunctions2d/):
+`sdRoundedBox`, `sdChamferBox`, `sdOrientedBox`, `sdRhombus`, `sdTrapezoid`,
+`sdParallelogram`, `sdTriangle`/`sdTriangleIsosceles`/`sdEquilateralTriangle`,
+`sdUnevenCapsule`, `sdPentagon`/`sdHexagon`/`sdOctogon`, `sdHexagram`/`sdPentagram`/`sdStar`,
+`sdPie`, `sdCutDisk`, `sdArc`, `sdRing`, `sdHorseshoe`, `sdVesica`/`sdOrientedVesica`,
+`sdMoon`, `sdRoundedCross`, `sdCross`, `sdRoundedX`, `sdEgg`, `sdHeart`, `sdEllipse`,
+plus sketches made of polylines: `sdPolygon` (a signed closed contour) and
+`sdPolyline` (an unsigned wire). The 2D operators (`opUnion`, `opSmoothUnion`,
+`opSubtraction`, `opRound`, `opOnion`, `opTranslate`, `opRotate`, `opSymX`, ...)
+mirror the 3D ones, so a typical 2D-to-3D workflow looks like:
+
+```nim
+let sketch = sdPolygon([p2(-1, -1), p2(1, -1), p2(1, 1), p2(-1, 1)])
+  .opSubtraction(sdCircle(p2(0, 0), 0.5))
+let plate = sketch.opExtrusion(0.5)
+let mesh: Grid3 = plate.polygonize(step = 0.05)
+```
+
 
 ## Compile flags
 
