@@ -6,13 +6,12 @@ export grids
 import ./[common]
 
 
-# Translating an SDF world into polygons, using marching tetrahedra.
-#
-# The space is split into a lattice of cubic cells; every cell is split into
-# 6 tetrahedra around its main diagonal (this decomposition is face-consistent,
-# so the resulting mesh is watertight); every tetrahedron crossing the isosurface
-# is replaced with a triangle or a quad. Vertices on shared lattice edges are
-# welded, triangles are oriented outwards using the SDF gradient.
+## Translating an SDF world into polygons, using marching tetrahedra.
+##
+## The space is split into a lattice of cubic cells; every cell is split into 6 tetrahedra around its main diagonal
+## (this decomposition is face-consistent, so the resulting mesh is watertight);
+## every tetrahedron crossing the isosurface is replaced with a triangle or a quad.
+## Vertices on shared lattice edges are welded, triangles are oriented outwards using the SDF gradient.
 
 
 const cellTetrahedras: array[6, array[4, int]] = [
@@ -28,7 +27,7 @@ const cellTetrahedras: array[6, array[4, int]] = [
   ## (0=(0,0,0), 1=(1,0,0), 2=(0,1,0), 3=(1,1,0), 4=(0,0,1), 5=(1,0,1), 6=(0,1,1), 7=(1,1,1))
 
 
-proc polygonize*(sdf: Sdf3, bounds: Bounds3, step: Float): Grid3 {.aliases: [marchingTetrahedra].} =
+proc polygonize*(sdf: Sdf3, bounds: Bounds3, step: Float): Grid3 {.aliases: [toGrid].} =
   ## translates an SDF into a triangle mesh, sampling it on a lattice
   ## with an approximately `step` spacing inside `bounds`
   ##
@@ -52,8 +51,8 @@ proc polygonize*(sdf: Sdf3, bounds: Bounds3, step: Float): Grid3 {.aliases: [mar
 
   var mesh = Grid3(kind: Triangles)
 
-  # The sampling lattice is shifted by a fixed fractional part of the step in
-  # each axis. Otherwise a surface plane or line coinciding with lattice planes
+  # The sampling lattice is shifted by a fixed fractional part of the step in each axis.
+  # Otherwise a surface plane or line coinciding with lattice planes
   # (an axis-aligned box face, the pole of a sphere at a lattice point, ...) would
   # produce lattice points with exactly zero distance, whose edges all get
   # coincident crossing vertices and pinch the mesh.
@@ -205,7 +204,7 @@ proc polygonize*(sdf: Sdf3, bounds: Bounds3, step: Float): Grid3 {.aliases: [mar
   result = mesh
 
 
-proc polygonize*(sdf: Sdf3, bounds: Bounds3, resolution: int): Grid3 =
+proc polygonize*(sdf: Sdf3, bounds: Bounds3, resolution: int): Grid3 {.aliases: [toGrid].} =
   ## translates an SDF into a triangle mesh, splitting the largest side of `bounds`
   ## into `resolution` steps
   let size = bounds.max.V3 - bounds.min.V3
@@ -213,23 +212,25 @@ proc polygonize*(sdf: Sdf3, bounds: Bounds3, resolution: int): Grid3 =
   polygonize(sdf, bounds, step)
 
 
-proc polygonize*(sdf: Sdf3, step: Float): Grid3 =
+proc polygonize*(sdf: Sdf3, step: Float): Grid3 {.aliases: [toGrid].} =
   ## `polygonize` using the bounds of the SDF itself
   ## (works only if the SDF has known finite bounds)
   let b = sdf.bounds3
   if not b.isKnown:
     raise ValueError.newException(
       "cannot polygonize SDF: its bounds are unknown (the shape is unbounded, " &
-      "or a deformation/repetition operator was used); pass `bounds` explicitly to `polygonize`")
+      "or a deformation/repetition operator was used); pass `bounds` explicitly to `polygonize`"
+    )
   polygonize(sdf, b, step)
 
 
-proc polygonize*(sdf: Sdf3, resolution: int): Grid3 =
+proc polygonize*(sdf: Sdf3, resolution: int = 32): Grid3 {.aliases: [toGrid].} =
   ## `polygonize` using the bounds of the SDF itself
   ## (works only if the SDF has known finite bounds)
   let b = sdf.bounds3
   if not b.isKnown:
     raise ValueError.newException(
       "cannot polygonize SDF: its bounds are unknown (the shape is unbounded, " &
-      "or a deformation/repetition operator was used); pass `bounds` explicitly to `polygonize`")
+      "or a deformation/repetition operator was used); pass `bounds` explicitly to `polygonize`"
+    )
   polygonize(sdf, b, resolution)

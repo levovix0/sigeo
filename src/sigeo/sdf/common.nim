@@ -7,9 +7,11 @@ export vectors, points, bounds2, bounds3, placement
 type
   Sdf2Func* = proc(p: Point2): Float {.closure.}
     ## signed distance function in 2D space
+    ## todo: use interfaces instead
 
   Sdf3Func* = proc(p: Point3): Float {.closure.}
     ## signed distance function in 3D space
+    ## todo: use interfaces instead
 
   Sdf2* = object
     ## signed distance field in 2D

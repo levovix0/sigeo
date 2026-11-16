@@ -2,8 +2,8 @@ import std/[math]
 import ./[common]
 
 
-# Exact 2D SDF primitives, based on Inigo Quilez's article
-# "2D distance functions" (https://iquilezles.org/articles/distfunctions2d/)
+## Parametric 2D SDF primitives, based on Inigo Quilez's article
+## "2D distance functions" (https://iquilezles.org/articles/distfunctions2d/)
 
 
 proc modFloor(x, y: Float): Float {.inline.} =
@@ -493,11 +493,11 @@ proc sdHexagram*(center: Point2, radius: Float): Sdf2 =
 proc sdPentagram*(center: Point2, radius: Float): Sdf2 =
   ## exact pentagram (five-pointed star), `radius` is the circumradius
   const
-    k1x = 0.809016994  # cos(pi/5)
-    k2x = 0.309016994  # sin(pi/10)
-    k1y = 0.587785252  # sin(pi/5)
-    k2y = 0.951056516  # cos(pi/10)
-    k1z = 0.726542528  # tan(pi/5)
+    k1x = cos(PI/5)
+    k2x = sin(PI/10)
+    k1y = sin(PI/5)
+    k2y = cos(PI/10)
+    k1z = tan(PI/5)
   let r = radius
   let
     v1 = v2( k1x, -k1y)

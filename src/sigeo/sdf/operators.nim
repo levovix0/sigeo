@@ -3,11 +3,11 @@ import ../macros/[genAliases]
 import ./[common]
 
 
-# SDF combination and space operators, based on Inigo Quilez's article
-# "Distance functions" (https://iquilezles.org/articles/distfunctions/)
+## SDF combination and space operators, based on Inigo Quilez's article
+## "Distance functions" (https://iquilezles.org/articles/distfunctions/)
 
 
-# region boolean operations
+#region boolean operations
 
 
 proc opUnion*(a, b: Sdf3): Sdf3 {.aliases: [union].} =
@@ -68,10 +68,10 @@ proc opSmoothIntersection*(a, b: Sdf3, k: Float): Sdf3 {.aliases: [smoothInterse
   )
 
 
-# endregion
+#endregion
 
 
-# region constructing new shapes from existing ones
+#region constructing new shapes from existing ones
 
 
 proc opElongate*(sdf: Sdf3, halfSize: V3): Sdf3 {.aliases: [elongate].} =
@@ -116,10 +116,10 @@ proc opOnion*(sdf: Sdf3, thickness: Float): Sdf3 {.aliases: [onion].} =
   )
 
 
-# endregion
+#endregion
 
 
-# region positioning
+#region positioning
 
 
 proc opTranslate*(sdf: Sdf3, offset: V3): Sdf3 {.aliases: [translate].} =
@@ -134,7 +134,7 @@ proc opRotate*(sdf: Sdf3, around: Point3, axis: NormalVec3, angle: Float): Sdf3 
   ## rotates the shape around the axis passing through `around`
   sdf3(
     dist = proc(p: Point3): Float =
-      sdf.dist(around + (p - around).V3.rotate(axis, -angle))
+      sdf.dist(around + (p - around).rotate(axis, -angle))
     ,
     bounds = sdf.bounds3.rotated(around, axis, angle),
   )
@@ -156,10 +156,10 @@ proc opScale*(sdf: Sdf3, factor: Float): Sdf3 {.aliases: [scale].} =
   )
 
 
-# endregion
+#endregion
 
 
-# region symmetry and repetition
+#region symmetry and repetition
 
 
 proc opSymX*(sdf: Sdf3): Sdf3 {.aliases: [mirrorX].} =
@@ -254,10 +254,10 @@ proc opLimitedRepetition*(sdf: Sdf3, spacing: V3, limit: V3): Sdf3 {.aliases: [l
   )
 
 
-# endregion
+#endregion
 
 
-# region deformations
+#region deformations
 
 
 proc opDisplace*(sdf: Sdf3, displacement: Sdf3): Sdf3 {.aliases: [displace].} =
@@ -300,10 +300,10 @@ proc opCheapBend*(sdf: Sdf3, k: Float): Sdf3 {.aliases: [bend].} =
   )
 
 
-# endregion
+#endregion
 
 
-# region creating 3D SDFs from 2D SDFs
+#region creating 3D SDFs from 2D SDFs
 
 
 proc opExtrusion*(sdf: Sdf2, halfHeight: Float): Sdf3 {.aliases: [extrude].} =
@@ -344,4 +344,4 @@ proc opRevolution*(sdf: Sdf2, offset: Float): Sdf3 {.aliases: [revolve].} =
   )
 
 
-# endregion
+#endregion

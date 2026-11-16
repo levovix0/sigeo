@@ -2,8 +2,8 @@ import std/[math]
 import ./[common]
 
 
-# Exact and true SDF primitives, based on Inigo Quilez's article
-# "Distance functions" (https://iquilezles.org/articles/distfunctions/)
+## Parametric 3D SDF primitives, based on Inigo Quilez's article
+## "Distance functions" (https://iquilezles.org/articles/distfunctions/)
 
 
 proc sdSphere*(center: Point3, radius: Float): Sdf3 =
@@ -590,9 +590,9 @@ proc sdTriPrism*(center: Point3, triangleSize, halfDepth: Float): Sdf3 =
 proc udTriangle*(a, b, c: Point3): Sdf3 =
   ## unsigned distance to a triangle (a surface, not a solid:
   ## useful only in combination with other SDFs, cannot be polygonized on its own)
-  let ba = b.V3 - a.V3
-  let cb = c.V3 - b.V3
-  let ac = a.V3 - c.V3
+  let ba = b - a
+  let cb = c - b
+  let ac = a - c
   let nor = ba.cross(ac)
   let dot2ba = ba.dot2
   let dot2cb = cb.dot2
@@ -600,9 +600,9 @@ proc udTriangle*(a, b, c: Point3): Sdf3 =
   let dot2nor = nor.dot2
   sdf3(
     dist = proc(p: Point3): Float =
-      let pa = p.V3 - a.V3
-      let pb = p.V3 - b.V3
-      let pc = p.V3 - c.V3
+      let pa = p - a
+      let pb = p - b
+      let pc = p - c
       let signs =
         ba.cross(nor).dot(pa).sign +
         cb.cross(nor).dot(pb).sign +
@@ -628,10 +628,10 @@ proc udTriangle*(a, b, c: Point3): Sdf3 =
 proc udQuad*(a, b, c, d: Point3): Sdf3 =
   ## unsigned distance to a quad (a surface, not a solid:
   ## useful only in combination with other SDFs, cannot be polygonized on its own)
-  let ba = b.V3 - a.V3
-  let cb = c.V3 - b.V3
-  let dc = d.V3 - c.V3
-  let ad = a.V3 - d.V3
+  let ba = b - a
+  let cb = c - b
+  let dc = d - c
+  let ad = a - d
   let nor = ba.cross(ad)
   let dot2ba = ba.dot2
   let dot2cb = cb.dot2

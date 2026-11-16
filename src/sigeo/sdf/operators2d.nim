@@ -3,12 +3,12 @@ import ../macros/[genAliases]
 import ./[common]
 
 
-# 2D SDF operators, based on Inigo Quilez's articles
-# "2D distance functions" and "Distance functions" (rigid deformations, domain
-# repetition, boolean operations and smooth connections work just as well in 2D)
+## 2D SDF operators, based on Inigo Quilez's articles
+## "2D distance functions" and "Distance functions" (rigid deformations, domain
+## repetition, boolean operations and smooth connections work just as well in 2D)
 
 
-# region boolean operations
+#region boolean operations
 
 
 proc opUnion*(a, b: Sdf2): Sdf2 {.aliases: [union].} =
@@ -69,10 +69,10 @@ proc opSmoothIntersection*(a, b: Sdf2, k: Float): Sdf2 {.aliases: [smoothInterse
   )
 
 
-# endregion
+#endregion
 
 
-# region constructing new shapes from existing ones
+#region constructing new shapes from existing ones
 
 
 proc opElongate*(sdf: Sdf2, halfSize: V2): Sdf2 {.aliases: [elongate].} =
@@ -103,10 +103,10 @@ proc opOnion*(sdf: Sdf2, thickness: Float): Sdf2 {.aliases: [onion].} =
   )
 
 
-# endregion
+#endregion
 
 
-# region positioning
+#region positioning
 
 
 proc opTranslate*(sdf: Sdf2, offset: V2): Sdf2 {.aliases: [translate].} =
@@ -120,7 +120,7 @@ proc opTranslate*(sdf: Sdf2, offset: V2): Sdf2 {.aliases: [translate].} =
 proc opRotate*(sdf: Sdf2, around: Point2, angle: Float): Sdf2 {.aliases: [rotate].} =
   ## rotates the shape around the `around` point
   sdf2(
-    dist = proc(p: Point2): Float = sdf.dist(around + (p - around).V2.rotate(-angle)),
+    dist = proc(p: Point2): Float = sdf.dist(around + (p - around).rotate(-angle)),
     bounds = sdf.bounds2.rotated(around, angle),
   )
 
@@ -133,10 +133,10 @@ proc opScale*(sdf: Sdf2, factor: Float): Sdf2 {.aliases: [scale].} =
   )
 
 
-# endregion
+#endregion
 
 
-# region symmetry and repetition
+#region symmetry and repetition
 
 
 proc opSymX*(sdf: Sdf2): Sdf2 {.aliases: [mirrorX].} =
@@ -199,4 +199,4 @@ proc opLimitedRepetition*(sdf: Sdf2, spacing: V2, limit: V2): Sdf2 {.aliases: [l
   )
 
 
-# endregion
+#endregion
